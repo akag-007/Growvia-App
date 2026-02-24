@@ -3,7 +3,8 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, ChevronRight, ChevronLeft, Calendar, Clock, Grid3x3, Lock, Globe } from 'lucide-react'
-import { useChallengesStore, TrackingUnit, computeTotalCells } from '@/stores/challenges'
+import { useChallengesStore, TrackingUnit, computeTotalCells, Challenge } from '@/stores/challenges'
+import { createChallenge } from '@/actions/challenges'
 import { cn } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -49,10 +50,7 @@ function GridPreview({ total, shape, size }: { total: number; shape: string; siz
     return (
         <div className="flex flex-wrap gap-0.5 p-4 bg-zinc-950 rounded-xl border border-zinc-800 max-h-40 overflow-hidden">
             {cells.map((_, i) => (
-                <div
-                    key={i}
-                    className={cn('bg-zinc-800 border border-zinc-700/50 flex-shrink-0', shapeClass, sizeClass)}
-                />
+                <div key={i} className={cn('bg-zinc-800 border border-zinc-700/50 flex-shrink-0', shapeClass, sizeClass)} />
             ))}
             {total > maxShow && (
                 <span className="text-xs text-zinc-600 self-end ml-1">+{total - maxShow} more…</span>
@@ -64,10 +62,11 @@ function GridPreview({ total, shape, size }: { total: number; shape: string; siz
 // ─── Main Modal ───────────────────────────────────────────────────────────────
 
 export function CreateChallengeModal({ onClose }: Props) {
-    const { addChallenge } = useChallengesStore()
+    const { addChallengeOptimistic, confirmChallenge } = useChallengesStore()
     const today = new Date().toISOString().split('T')[0]
 
     const [step, setStep] = useState<Step>('basics')
+    const [submitting, setSubmitting] = useState(false)
     const [form, setForm] = useState<FormData>({
         title: '',
         description: '',
@@ -82,7 +81,7 @@ export function CreateChallengeModal({ onClose }: Props) {
 
     const totalCells = computeTotalCells(form.durationDays, form.trackingUnit)
 
-    const set = (patch: Partial<FormData>) => setForm((f) => ({ ...f, ...patch }))
+    const patch = (p: Partial<FormData>) => setForm((f) => ({ ...f, ...p }))
 
     const validateBasics = () => {
         const e: typeof errors = {}
@@ -95,9 +94,7 @@ export function CreateChallengeModal({ onClose }: Props) {
         const e: typeof errors = {}
         if (!form.startDate) e.startDate = 'Start date is required'
         if (form.durationDays < 1) e.durationDays = 'Duration must be at least 1'
-        if (totalCells > 20000) {
-            e.durationDays = `Too many cells (${totalCells.toLocaleString()}). Use a larger tracking unit.`
-        }
+        if (totalCells > 20000) e.durationDays = `Too many cells (${totalCells.toLocaleString()}). Use a larger unit.`
         setErrors(e)
         return Object.keys(e).length === 0
     }
@@ -112,8 +109,32 @@ export function CreateChallengeModal({ onClose }: Props) {
         else if (step === 'preview') setStep('schedule')
     }
 
-    const handleSubmit = () => {
-        addChallenge({
+    const handleSubmit = async () => {
+        setSubmitting(true)
+
+        // Optimistic: add a temporary challenge immediately
+        const tempId = 'tmp-' + Date.now()
+        const optimistic: Challenge = {
+            id: tempId,
+            title: form.title.trim(),
+            description: form.description.trim() || undefined,
+            type: 'personal',
+            isPrivate: form.isPrivate,
+            startDate: form.startDate,
+            durationDays: form.durationDays,
+            trackingUnit: form.trackingUnit,
+            totalCells,
+            cellShape: form.cellShape,
+            cellSize: form.cellSize,
+            gridCells: Array.from({ length: totalCells }, (_, i) => ({ index: i, status: 'empty' as const })),
+            categories: [],
+            createdAt: new Date().toISOString(),
+        }
+        addChallengeOptimistic(optimistic)
+        onClose()
+
+        // Persist to Supabase
+        const result = await createChallenge({
             title: form.title.trim(),
             description: form.description.trim() || undefined,
             type: 'personal',
@@ -124,7 +145,12 @@ export function CreateChallengeModal({ onClose }: Props) {
             cellShape: form.cellShape,
             cellSize: form.cellSize,
         })
-        onClose()
+
+        if (result.success && result.data) {
+            confirmChallenge(tempId, result.data)
+        }
+        // If it fails, the optimistic entry stays in the store until page refresh — acceptable tradeoff
+        setSubmitting(false)
     }
 
     const steps: Step[] = ['basics', 'schedule', 'preview']
@@ -132,14 +158,11 @@ export function CreateChallengeModal({ onClose }: Props) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Backdrop */}
             <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="absolute inset-0 bg-black/70 backdrop-blur-sm"
                 onClick={onClose}
             />
-
-            {/* Panel */}
             <motion.div
                 initial={{ opacity: 0, scale: 0.92, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -159,16 +182,10 @@ export function CreateChallengeModal({ onClose }: Props) {
                     </button>
                 </div>
 
-                {/* Step progress bar */}
+                {/* Step progress */}
                 <div className="flex gap-1 px-6 pt-4">
                     {steps.map((s, i) => (
-                        <div
-                            key={s}
-                            className={cn(
-                                'h-1 flex-1 rounded-full transition-all duration-300',
-                                i <= stepIdx ? 'bg-violet-500' : 'bg-zinc-800'
-                            )}
-                        />
+                        <div key={s} className={cn('h-1 flex-1 rounded-full transition-all duration-300', i <= stepIdx ? 'bg-violet-500' : 'bg-zinc-800')} />
                     ))}
                 </div>
 
@@ -177,48 +194,30 @@ export function CreateChallengeModal({ onClose }: Props) {
                     <AnimatePresence mode="wait">
                         {step === 'basics' && (
                             <motion.div key="basics" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
-                                {/* Title */}
                                 <div>
                                     <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Challenge Title *</label>
                                     <input
-                                        value={form.title}
-                                        onChange={(e) => set({ title: e.target.value })}
+                                        value={form.title} onChange={(e) => patch({ title: e.target.value })}
                                         placeholder="e.g. DSA Prep, 100 Days of Code…"
-                                        className={cn(
-                                            'w-full bg-zinc-800 border rounded-xl px-4 py-2.5 text-white placeholder:text-zinc-600 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50',
-                                            errors.title ? 'border-red-500' : 'border-zinc-700'
-                                        )}
+                                        className={cn('w-full bg-zinc-800 border rounded-xl px-4 py-2.5 text-white placeholder:text-zinc-600 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50', errors.title ? 'border-red-500' : 'border-zinc-700')}
                                     />
                                     {errors.title && <p className="text-red-400 text-xs mt-1">{errors.title}</p>}
                                 </div>
-
-                                {/* Description */}
                                 <div>
                                     <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Description</label>
                                     <textarea
-                                        value={form.description}
-                                        onChange={(e) => set({ description: e.target.value })}
-                                        placeholder="What's this challenge about?"
-                                        rows={3}
+                                        value={form.description} onChange={(e) => patch({ description: e.target.value })}
+                                        placeholder="What's this challenge about?" rows={3}
                                         className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-white placeholder:text-zinc-600 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 resize-none"
                                     />
                                 </div>
-
-                                {/* Visibility */}
                                 <div>
                                     <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Visibility</label>
                                     <div className="flex gap-3">
                                         {([true, false] as const).map((priv) => (
-                                            <button
-                                                key={String(priv)}
-                                                onClick={() => set({ isPrivate: priv })}
-                                                className={cn(
-                                                    'flex-1 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all',
-                                                    form.isPrivate === priv
-                                                        ? 'bg-violet-600 border-violet-500 text-white'
-                                                        : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
-                                                )}
-                                            >
+                                            <button key={String(priv)} onClick={() => patch({ isPrivate: priv })}
+                                                className={cn('flex-1 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all',
+                                                    form.isPrivate === priv ? 'bg-violet-600 border-violet-500 text-white' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white')}>
                                                 {priv ? <Lock size={14} /> : <Globe size={14} />}
                                                 {priv ? 'Private' : 'Community'}
                                             </button>
@@ -230,72 +229,38 @@ export function CreateChallengeModal({ onClose }: Props) {
 
                         {step === 'schedule' && (
                             <motion.div key="schedule" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
-                                {/* Start date */}
                                 <div>
                                     <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                                         <Calendar size={12} /> Start Date
                                     </label>
-                                    <input
-                                        type="date"
-                                        value={form.startDate}
-                                        onChange={(e) => set({ startDate: e.target.value })}
-                                        className={cn(
-                                            'w-full bg-zinc-800 border rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50',
-                                            errors.startDate ? 'border-red-500' : 'border-zinc-700'
-                                        )}
-                                    />
+                                    <input type="date" value={form.startDate} onChange={(e) => patch({ startDate: e.target.value })}
+                                        className={cn('w-full bg-zinc-800 border rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50', errors.startDate ? 'border-red-500' : 'border-zinc-700')} />
                                 </div>
-
-                                {/* Duration */}
                                 <div>
                                     <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Duration</label>
                                     <div className="flex gap-2 flex-wrap mb-2">
                                         {DURATION_PRESETS.map((p) => (
-                                            <button
-                                                key={p.days}
-                                                onClick={() => set({ durationDays: p.days })}
-                                                className={cn(
-                                                    'px-3 py-1.5 rounded-lg text-xs font-bold border transition-all',
-                                                    form.durationDays === p.days
-                                                        ? 'bg-violet-600 border-violet-500 text-white'
-                                                        : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
-                                                )}
-                                            >
+                                            <button key={p.days} onClick={() => patch({ durationDays: p.days })}
+                                                className={cn('px-3 py-1.5 rounded-lg text-xs font-bold border transition-all',
+                                                    form.durationDays === p.days ? 'bg-violet-600 border-violet-500 text-white' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white')}>
                                                 {p.label}
                                             </button>
                                         ))}
                                     </div>
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        value={form.durationDays}
-                                        onChange={(e) => set({ durationDays: parseInt(e.target.value) || 1 })}
-                                        className={cn(
-                                            'w-full bg-zinc-800 border rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50',
-                                            errors.durationDays ? 'border-red-500' : 'border-zinc-700'
-                                        )}
-                                        placeholder="Custom days"
-                                    />
+                                    <input type="number" min={1} value={form.durationDays} onChange={(e) => patch({ durationDays: parseInt(e.target.value) || 1 })}
+                                        className={cn('w-full bg-zinc-800 border rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50', errors.durationDays ? 'border-red-500' : 'border-zinc-700')}
+                                        placeholder="Custom days" />
                                     {errors.durationDays && <p className="text-red-400 text-xs mt-1">{errors.durationDays}</p>}
                                 </div>
-
-                                {/* Tracking unit */}
                                 <div>
                                     <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                                         <Clock size={12} /> Tracking Breakdown
                                     </label>
                                     <div className="flex gap-2">
                                         {TRACKING_UNITS.map((u) => (
-                                            <button
-                                                key={u.value}
-                                                onClick={() => set({ trackingUnit: u.value })}
-                                                className={cn(
-                                                    'flex-1 px-3 py-2.5 rounded-xl text-sm font-semibold border transition-all',
-                                                    form.trackingUnit === u.value
-                                                        ? 'bg-violet-600 border-violet-500 text-white'
-                                                        : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
-                                                )}
-                                            >
+                                            <button key={u.value} onClick={() => patch({ trackingUnit: u.value })}
+                                                className={cn('flex-1 px-3 py-2.5 rounded-xl text-sm font-semibold border transition-all',
+                                                    form.trackingUnit === u.value ? 'bg-violet-600 border-violet-500 text-white' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white')}>
                                                 <div>{u.label}</div>
                                                 <div className="text-[10px] opacity-60 mt-0.5">{u.desc}</div>
                                             </button>
@@ -319,16 +284,9 @@ export function CreateChallengeModal({ onClose }: Props) {
                                             <p className="text-xs text-zinc-500 mb-1.5">Cell shape</p>
                                             <div className="flex gap-1.5">
                                                 {(['square', 'rounded', 'circle'] as const).map((s) => (
-                                                    <button
-                                                        key={s}
-                                                        onClick={() => set({ cellShape: s })}
-                                                        className={cn(
-                                                            'flex-1 py-2 rounded-lg text-xs font-semibold border transition-all capitalize',
-                                                            form.cellShape === s
-                                                                ? 'bg-violet-600 border-violet-500 text-white'
-                                                                : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
-                                                        )}
-                                                    >
+                                                    <button key={s} onClick={() => patch({ cellShape: s })}
+                                                        className={cn('flex-1 py-2 rounded-lg text-xs font-semibold border transition-all capitalize',
+                                                            form.cellShape === s ? 'bg-violet-600 border-violet-500 text-white' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white')}>
                                                         {s}
                                                     </button>
                                                 ))}
@@ -338,16 +296,9 @@ export function CreateChallengeModal({ onClose }: Props) {
                                             <p className="text-xs text-zinc-500 mb-1.5">Cell size</p>
                                             <div className="flex gap-1.5">
                                                 {(['xs', 'sm', 'md'] as const).map((s) => (
-                                                    <button
-                                                        key={s}
-                                                        onClick={() => set({ cellSize: s })}
-                                                        className={cn(
-                                                            'flex-1 py-2 rounded-lg text-xs font-semibold border transition-all uppercase',
-                                                            form.cellSize === s
-                                                                ? 'bg-violet-600 border-violet-500 text-white'
-                                                                : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
-                                                        )}
-                                                    >
+                                                    <button key={s} onClick={() => patch({ cellSize: s })}
+                                                        className={cn('flex-1 py-2 rounded-lg text-xs font-semibold border transition-all uppercase',
+                                                            form.cellSize === s ? 'bg-violet-600 border-violet-500 text-white' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white')}>
                                                         {s}
                                                     </button>
                                                 ))}
@@ -356,7 +307,7 @@ export function CreateChallengeModal({ onClose }: Props) {
                                     </div>
                                     <GridPreview total={totalCells} shape={form.cellShape} size={form.cellSize} />
                                     <p className="text-xs text-zinc-600 mt-2 text-center">
-                                        {totalCells.toLocaleString()} cells · You can change the style later inside the challenge
+                                        {totalCells.toLocaleString()} cells · Style can be changed later
                                     </p>
                                 </div>
                             </motion.div>
@@ -366,19 +317,18 @@ export function CreateChallengeModal({ onClose }: Props) {
 
                 {/* Footer */}
                 <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-800">
-                    <button
-                        onClick={step === 'basics' ? onClose : handleBack}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-zinc-400 hover:text-white transition-colors"
-                    >
+                    <button onClick={step === 'basics' ? onClose : handleBack}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-zinc-400 hover:text-white transition-colors">
                         <ChevronLeft size={16} />
                         {step === 'basics' ? 'Cancel' : 'Back'}
                     </button>
                     <button
                         onClick={step === 'preview' ? handleSubmit : handleNext}
-                        className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold bg-violet-600 hover:bg-violet-500 text-white transition-colors shadow-lg shadow-violet-600/25"
+                        disabled={submitting}
+                        className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold bg-violet-600 hover:bg-violet-500 disabled:opacity-60 text-white transition-colors shadow-lg shadow-violet-600/25"
                     >
-                        {step === 'preview' ? 'Create Challenge' : 'Next'}
-                        {step !== 'preview' && <ChevronRight size={16} />}
+                        {submitting ? 'Saving…' : step === 'preview' ? 'Create Challenge' : 'Next'}
+                        {step !== 'preview' && !submitting && <ChevronRight size={16} />}
                     </button>
                 </div>
             </motion.div>

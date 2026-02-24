@@ -1,7 +1,7 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import type { ChallengeRow } from '@/actions/challenges'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Re-export types used by components ───────────────────────────────────────
 
 export type TrackingUnit = 'hours' | 'days' | 'weeks'
 export type CellStatus = 'empty' | 'completed'
@@ -9,15 +9,15 @@ export type CellStatus = 'empty' | 'completed'
 export interface GridCell {
     index: number
     status: CellStatus
-    categoryId?: string   // which category this cell belongs to
+    categoryId?: string
 }
 
 export interface Category {
     id: string
     name: string
-    color: string          // hex colour
+    color: string
     unit: 'minutes' | 'hours' | 'count'
-    totalLogged: number    // minutes / hours / count depending on unit
+    totalLogged: number
 }
 
 export interface Challenge {
@@ -26,19 +26,18 @@ export interface Challenge {
     description?: string
     type: 'personal' | 'community'
     isPrivate: boolean
-    startDate: string      // ISO date string "YYYY-MM-DD"
+    startDate: string
     durationDays: number
     trackingUnit: TrackingUnit
-    totalCells: number     // computed from durationDays + trackingUnit
+    totalCells: number
     gridCells: GridCell[]
     categories: Category[]
-    // Grid style
     cellShape: 'square' | 'circle' | 'rounded'
     cellSize: 'xs' | 'sm' | 'md'
     createdAt: string
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 export function computeTotalCells(durationDays: number, unit: TrackingUnit): number {
     if (unit === 'hours') return durationDays * 24
@@ -46,142 +45,189 @@ export function computeTotalCells(durationDays: number, unit: TrackingUnit): num
     return durationDays
 }
 
-function buildCells(total: number): GridCell[] {
-    return Array.from({ length: total }, (_, i) => ({ index: i, status: 'empty' as CellStatus }))
+/** Map a DB row to the client-side Challenge shape */
+export function rowToChallenge(row: ChallengeRow): Challenge {
+    return {
+        id: row.id,
+        title: row.title,
+        description: row.description ?? undefined,
+        type: row.type,
+        isPrivate: row.is_private,
+        startDate: row.start_date,
+        durationDays: row.duration_days,
+        trackingUnit: row.tracking_unit,
+        totalCells: row.total_cells,
+        gridCells: row.grid_cells,
+        categories: row.categories,
+        cellShape: row.cell_shape,
+        cellSize: row.cell_size,
+        createdAt: row.created_at,
+    }
 }
 
 function uid() {
     return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
-// ─── Store ────────────────────────────────────────────────────────────────────
+// ─── Store ─────────────────────────────────────────────────────────────────────
+// No `persist` — data lives in Supabase; store is just a client-side cache.
 
 interface ChallengesState {
     challenges: Challenge[]
     activeChallengeId: string | null
+    isFetching: boolean
 
-    // Challenge CRUD
-    addChallenge: (data: Omit<Challenge, 'id' | 'gridCells' | 'totalCells' | 'categories' | 'createdAt'>) => void
-    updateChallenge: (id: string, updates: Partial<Omit<Challenge, 'id' | 'gridCells' | 'categories'>>) => void
-    deleteChallenge: (id: string) => void
+    // Hydrate from server (called once on page mount)
+    hydrate: (rows: ChallengeRow[]) => void
+
+    // Optimistic add (server action called by the component)
+    addChallengeOptimistic: (challenge: Challenge) => void
+    // Replace a temp challenge with the real DB row
+    confirmChallenge: (tempId: string, real: ChallengeRow) => void
+
+    // Remove
+    removeChallengeOptimistic: (id: string) => void
+
     setActiveChallenge: (id: string | null) => void
 
-    // Grid
-    toggleCell: (challengeId: string, cellIndex: number) => void
-    setCellCategory: (challengeId: string, cellIndex: number, categoryId: string | undefined) => void
+    // Grid — optimistic; caller is responsible for persisting to DB
+    toggleCell: (challengeId: string, cellIndex: number) => GridCell[]
+    setCellCategory: (challengeId: string, cellIndex: number, categoryId: string | undefined) => GridCell[]
 
-    // Categories
-    addCategory: (challengeId: string, data: Omit<Category, 'id' | 'totalLogged'>) => void
-    updateCategory: (challengeId: string, categoryId: string, updates: Partial<Omit<Category, 'id'>>) => void
-    deleteCategory: (challengeId: string, categoryId: string) => void
-    logCategoryEntry: (challengeId: string, categoryId: string, amount: number) => void
+    // Categories — optimistic; caller persists to DB
+    addCategory: (challengeId: string, data: Omit<Category, 'id' | 'totalLogged'>) => Category[]
+    updateCategory: (challengeId: string, categoryId: string, updates: Partial<Omit<Category, 'id'>>) => Category[]
+    deleteCategory: (challengeId: string, categoryId: string) => { categories: Category[]; gridCells: GridCell[] }
+    logCategoryEntry: (challengeId: string, categoryId: string, amount: number) => Category[]
+
+    // Style — optimistic; caller persists to DB
+    updateChallengeStyle: (id: string, updates: Partial<Pick<Challenge, 'cellShape' | 'cellSize'>>) => void
 }
 
-export const useChallengesStore = create<ChallengesState>()(
-    persist(
-        (set, get) => ({
-            challenges: [],
-            activeChallengeId: null,
+export const useChallengesStore = create<ChallengesState>((set, get) => ({
+    challenges: [],
+    activeChallengeId: null,
+    isFetching: false,
 
-            addChallenge: (data) => {
-                const total = computeTotalCells(data.durationDays, data.trackingUnit)
-                const challenge: Challenge = {
-                    ...data,
-                    id: uid(),
-                    totalCells: total,
-                    gridCells: buildCells(total),
-                    categories: [],
-                    createdAt: new Date().toISOString(),
-                }
-                set((s) => ({ challenges: [challenge, ...s.challenges] }))
-            },
+    hydrate: (rows) => set({ challenges: rows.map(rowToChallenge) }),
 
-            updateChallenge: (id, updates) => set((s) => ({
-                challenges: s.challenges.map((c) => c.id === id ? { ...c, ...updates } : c)
-            })),
+    addChallengeOptimistic: (challenge) =>
+        set((s) => ({ challenges: [challenge, ...s.challenges] })),
 
-            deleteChallenge: (id) => set((s) => ({
-                challenges: s.challenges.filter((c) => c.id !== id),
-                activeChallengeId: s.activeChallengeId === id ? null : s.activeChallengeId,
-            })),
+    confirmChallenge: (tempId, real) =>
+        set((s) => ({
+            challenges: s.challenges.map((c) =>
+                c.id === tempId ? rowToChallenge(real) : c
+            ),
+        })),
 
-            setActiveChallenge: (id) => set({ activeChallengeId: id }),
+    removeChallengeOptimistic: (id) =>
+        set((s) => ({
+            challenges: s.challenges.filter((c) => c.id !== id),
+            activeChallengeId: s.activeChallengeId === id ? null : s.activeChallengeId,
+        })),
 
-            toggleCell: (challengeId, cellIndex) => set((s) => ({
-                challenges: s.challenges.map((c) => {
-                    if (c.id !== challengeId) return c
-                    return {
-                        ...c,
-                        gridCells: c.gridCells.map((cell) =>
-                            cell.index === cellIndex
-                                ? { ...cell, status: cell.status === 'completed' ? 'empty' : 'completed' }
-                                : cell
-                        ),
-                    }
-                }),
-            })),
+    setActiveChallenge: (id) => set({ activeChallengeId: id }),
 
-            setCellCategory: (challengeId, cellIndex, categoryId) => set((s) => ({
-                challenges: s.challenges.map((c) => {
-                    if (c.id !== challengeId) return c
-                    return {
-                        ...c,
-                        gridCells: c.gridCells.map((cell) =>
-                            cell.index === cellIndex ? { ...cell, categoryId } : cell
-                        ),
-                    }
-                }),
-            })),
+    // Returns the updated cells array so the caller can pass it to the server action
+    toggleCell: (challengeId, cellIndex) => {
+        let updatedCells: GridCell[] = []
+        set((s) => ({
+            challenges: s.challenges.map((c) => {
+                if (c.id !== challengeId) return c
+                const cells = c.gridCells.map((cell) =>
+                    cell.index === cellIndex
+                        ? { ...cell, status: (cell.status === 'completed' ? 'empty' : 'completed') as CellStatus }
+                        : cell
+                )
+                updatedCells = cells
+                return { ...c, gridCells: cells }
+            }),
+        }))
+        return updatedCells
+    },
 
-            addCategory: (challengeId, data) => {
-                const category: Category = { ...data, id: uid(), totalLogged: 0 }
-                set((s) => ({
-                    challenges: s.challenges.map((c) =>
-                        c.id === challengeId ? { ...c, categories: [...c.categories, category] } : c
-                    ),
-                }))
-            },
+    setCellCategory: (challengeId, cellIndex, categoryId) => {
+        let updatedCells: GridCell[] = []
+        set((s) => ({
+            challenges: s.challenges.map((c) => {
+                if (c.id !== challengeId) return c
+                const cells = c.gridCells.map((cell) =>
+                    cell.index === cellIndex ? { ...cell, categoryId } : cell
+                )
+                updatedCells = cells
+                return { ...c, gridCells: cells }
+            }),
+        }))
+        return updatedCells
+    },
 
-            updateCategory: (challengeId, categoryId, updates) => set((s) => ({
-                challenges: s.challenges.map((c) => {
-                    if (c.id !== challengeId) return c
-                    return {
-                        ...c,
-                        categories: c.categories.map((cat) =>
-                            cat.id === categoryId ? { ...cat, ...updates } : cat
-                        ),
-                    }
-                }),
-            })),
+    addCategory: (challengeId, data) => {
+        const category: Category = { ...data, id: uid(), totalLogged: 0 }
+        let updatedCats: Category[] = []
+        set((s) => ({
+            challenges: s.challenges.map((c) => {
+                if (c.id !== challengeId) return c
+                const cats = [...c.categories, category]
+                updatedCats = cats
+                return { ...c, categories: cats }
+            }),
+        }))
+        return updatedCats
+    },
 
-            deleteCategory: (challengeId, categoryId) => set((s) => ({
-                challenges: s.challenges.map((c) => {
-                    if (c.id !== challengeId) return c
-                    return {
-                        ...c,
-                        categories: c.categories.filter((cat) => cat.id !== categoryId),
-                        // unlink cells that used this category
-                        gridCells: c.gridCells.map((cell) =>
-                            cell.categoryId === categoryId ? { ...cell, categoryId: undefined } : cell
-                        ),
-                    }
-                }),
-            })),
+    updateCategory: (challengeId, categoryId, updates) => {
+        let updatedCats: Category[] = []
+        set((s) => ({
+            challenges: s.challenges.map((c) => {
+                if (c.id !== challengeId) return c
+                const cats = c.categories.map((cat) =>
+                    cat.id === categoryId ? { ...cat, ...updates } : cat
+                )
+                updatedCats = cats
+                return { ...c, categories: cats }
+            }),
+        }))
+        return updatedCats
+    },
 
-            logCategoryEntry: (challengeId, categoryId, amount) => set((s) => ({
-                challenges: s.challenges.map((c) => {
-                    if (c.id !== challengeId) return c
-                    return {
-                        ...c,
-                        categories: c.categories.map((cat) =>
-                            cat.id === categoryId ? { ...cat, totalLogged: cat.totalLogged + amount } : cat
-                        ),
-                    }
-                }),
-            })),
-        }),
-        {
-            name: 'challenges-store',
-        }
-    )
-)
+    deleteCategory: (challengeId, categoryId) => {
+        let updatedCats: Category[] = []
+        let updatedCells: GridCell[] = []
+        set((s) => ({
+            challenges: s.challenges.map((c) => {
+                if (c.id !== challengeId) return c
+                const cats = c.categories.filter((cat) => cat.id !== categoryId)
+                const cells = c.gridCells.map((cell) =>
+                    cell.categoryId === categoryId ? { ...cell, categoryId: undefined } : cell
+                )
+                updatedCats = cats
+                updatedCells = cells
+                return { ...c, categories: cats, gridCells: cells }
+            }),
+        }))
+        return { categories: updatedCats, gridCells: updatedCells }
+    },
+
+    logCategoryEntry: (challengeId, categoryId, amount) => {
+        let updatedCats: Category[] = []
+        set((s) => ({
+            challenges: s.challenges.map((c) => {
+                if (c.id !== challengeId) return c
+                const cats = c.categories.map((cat) =>
+                    cat.id === categoryId ? { ...cat, totalLogged: cat.totalLogged + amount } : cat
+                )
+                updatedCats = cats
+                return { ...c, categories: cats }
+            }),
+        }))
+        return updatedCats
+    },
+
+    updateChallengeStyle: (id, updates) =>
+        set((s) => ({
+            challenges: s.challenges.map((c) =>
+                c.id === id ? { ...c, ...updates } : c
+            ),
+        })),
+}))

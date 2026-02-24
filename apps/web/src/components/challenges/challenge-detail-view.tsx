@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { useChallengesStore, Challenge, Category, GridCell } from '@/stores/challenges'
 import { CategoryManagementModal } from './category-management-modal'
+import { toggleGridCell, setCellCategoryDb, syncChallengeData, updateChallengeStyle } from '@/actions/challenges'
 import { cn } from '@/lib/utils'
 import { format, addDays, parseISO } from 'date-fns'
 
@@ -15,7 +16,12 @@ import { format, addDays, parseISO } from 'date-fns'
 
 function cellLabel(cell: GridCell, challenge: Challenge) {
     const { trackingUnit, startDate } = challenge
-    const date = addDays(parseISO(startDate), trackingUnit === 'hours' ? Math.floor(cell.index / 24) : trackingUnit === 'weeks' ? cell.index * 7 : cell.index)
+    const date = addDays(
+        parseISO(startDate),
+        trackingUnit === 'hours' ? Math.floor(cell.index / 24)
+            : trackingUnit === 'weeks' ? cell.index * 7
+                : cell.index
+    )
     if (trackingUnit === 'hours') {
         const hour = cell.index % 24
         return `${format(date, 'MMM d')} · ${hour}:00`
@@ -38,9 +44,8 @@ function CellPopover({ cell, challenge, onClose, anchorEl }: {
 }) {
     const { toggleCell, setCellCategory } = useChallengesStore()
     const ref = useRef<HTMLDivElement>(null)
-
-    // Position near the anchor
     const [pos, setPos] = useState({ top: 0, left: 0 })
+
     useEffect(() => {
         if (!anchorEl || !ref.current) return
         const rect = anchorEl.getBoundingClientRect()
@@ -53,7 +58,6 @@ function CellPopover({ cell, challenge, onClose, anchorEl }: {
         setPos({ top, left })
     }, [anchorEl])
 
-    // Close on outside click
     useEffect(() => {
         const handler = (e: MouseEvent) => {
             if (ref.current && !ref.current.contains(e.target as Node) && anchorEl && !anchorEl.contains(e.target as Node)) {
@@ -64,7 +68,17 @@ function CellPopover({ cell, challenge, onClose, anchorEl }: {
         return () => document.removeEventListener('mousedown', handler)
     }, [anchorEl, onClose])
 
-    const cat = challenge.categories.find((c) => c.id === cell.categoryId)
+    const handleToggle = () => {
+        const updatedCells = toggleCell(challenge.id, cell.index)
+        toggleGridCell(challenge.id, updatedCells) // fire-and-forget to DB
+        onClose()
+    }
+
+    const handleSetCategory = (catId: string | undefined) => {
+        const updatedCells = setCellCategory(challenge.id, cell.index, catId)
+        setCellCategoryDb(challenge.id, updatedCells) // fire-and-forget to DB
+        onClose()
+    }
 
     return (
         <motion.div
@@ -76,12 +90,10 @@ function CellPopover({ cell, challenge, onClose, anchorEl }: {
             style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999, width: 196 }}
             className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl p-3 space-y-3"
         >
-            {/* Label */}
             <p className="text-[11px] font-bold text-zinc-500">{cellLabel(cell, challenge)}</p>
 
-            {/* Toggle */}
             <button
-                onClick={() => { toggleCell(challenge.id, cell.index); onClose() }}
+                onClick={handleToggle}
                 className={cn(
                     'w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all',
                     cell.status === 'completed'
@@ -89,16 +101,17 @@ function CellPopover({ cell, challenge, onClose, anchorEl }: {
                         : 'bg-violet-600/20 text-violet-300 hover:bg-violet-600 hover:text-white'
                 )}
             >
-                {cell.status === 'completed' ? <><Circle size={14} /> Mark empty</> : <><CheckCircle2 size={14} /> Mark done</>}
+                {cell.status === 'completed'
+                    ? <><Circle size={14} /> Mark empty</>
+                    : <><CheckCircle2 size={14} /> Mark done</>}
             </button>
 
-            {/* Category picker */}
             {challenge.categories.length > 0 && (
                 <div>
                     <p className="text-[10px] text-zinc-600 uppercase font-bold tracking-wider mb-1.5">Category</p>
                     <div className="flex flex-wrap gap-1.5">
                         <button
-                            onClick={() => setCellCategory(challenge.id, cell.index, undefined)}
+                            onClick={() => handleSetCategory(undefined)}
                             className={cn(
                                 'px-2 py-1 rounded-lg text-[11px] font-semibold border transition-all',
                                 !cell.categoryId ? 'bg-zinc-700 border-zinc-600 text-white' : 'border-zinc-700 text-zinc-500 hover:text-white'
@@ -109,7 +122,7 @@ function CellPopover({ cell, challenge, onClose, anchorEl }: {
                         {challenge.categories.map((c) => (
                             <button
                                 key={c.id}
-                                onClick={() => { setCellCategory(challenge.id, cell.index, c.id); onClose() }}
+                                onClick={() => handleSetCategory(c.id)}
                                 className={cn(
                                     'px-2 py-1 rounded-lg text-[11px] font-semibold border transition-all',
                                     cell.categoryId === c.id ? 'border-white/30 text-white' : 'border-transparent text-white hover:border-white/20'
@@ -129,15 +142,13 @@ function CellPopover({ cell, challenge, onClose, anchorEl }: {
 // ─── Grid Tab ─────────────────────────────────────────────────────────────────
 
 function GridTab({ challenge }: { challenge: Challenge }) {
-    const { updateChallenge } = useChallengesStore()
+    const { updateChallengeStyle: updateStyle } = useChallengesStore()
     const [activeCell, setActiveCell] = useState<{ cell: GridCell; el: HTMLElement } | null>(null)
     const [showStyle, setShowStyle] = useState(false)
 
     const completed = challenge.gridCells.filter((c) => c.status === 'completed').length
     const total = challenge.totalCells
     const pct = total > 0 ? Math.round((completed / total) * 100) : 0
-
-    // End date
     const endDate = addDays(parseISO(challenge.startDate), challenge.durationDays - 1)
     const daysLeft = Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / 86400000))
 
@@ -146,11 +157,16 @@ function GridTab({ challenge }: { challenge: Challenge }) {
 
     const handleCellClick = useCallback((e: React.MouseEvent<HTMLButtonElement>, cell: GridCell) => {
         e.stopPropagation()
-        setActiveCell((prev) => (prev?.cell.index === cell.index ? null : { cell, el: e.currentTarget }))
+        setActiveCell((prev) => prev?.cell.index === cell.index ? null : { cell, el: e.currentTarget })
     }, [])
 
-    // Close popover on grid click
-    const handleGridClick = () => setActiveCell(null)
+    const handleStyleChange = (updates: { cellShape?: Challenge['cellShape']; cellSize?: Challenge['cellSize'] }) => {
+        updateStyle(challenge.id, updates)
+        updateChallengeStyle(challenge.id, {
+            cell_shape: updates.cellShape ?? challenge.cellShape,
+            cell_size: updates.cellSize ?? challenge.cellSize,
+        })
+    }
 
     const cat = (id?: string) => id ? challenge.categories.find((c) => c.id === id) : undefined
 
@@ -183,9 +199,7 @@ function GridTab({ challenge }: { challenge: Challenge }) {
 
             {/* Grid style toggle */}
             <div className="flex items-center justify-between mb-3">
-                <p className="text-xs text-zinc-500">
-                    Click a cell to mark it done · Hover for date label
-                </p>
+                <p className="text-xs text-zinc-500">Click a cell to mark it done · Hover for date label</p>
                 <button
                     onClick={() => setShowStyle((v) => !v)}
                     className={cn(
@@ -197,7 +211,6 @@ function GridTab({ challenge }: { challenge: Challenge }) {
                 </button>
             </div>
 
-            {/* Style panel */}
             <AnimatePresence>
                 {showStyle && (
                     <motion.div
@@ -210,10 +223,11 @@ function GridTab({ challenge }: { challenge: Challenge }) {
                                 <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-2">Shape</p>
                                 <div className="flex gap-1.5">
                                     {(['square', 'rounded', 'circle'] as const).map((s) => (
-                                        <button key={s} onClick={() => updateChallenge(challenge.id, { cellShape: s })}
+                                        <button key={s} onClick={() => handleStyleChange({ cellShape: s })}
                                             className={cn('px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all capitalize',
-                                                challenge.cellShape === s ? 'bg-violet-600 border-violet-500 text-white' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white')}
-                                        >{s}</button>
+                                                challenge.cellShape === s ? 'bg-violet-600 border-violet-500 text-white' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white')}>
+                                            {s}
+                                        </button>
                                     ))}
                                 </div>
                             </div>
@@ -221,10 +235,11 @@ function GridTab({ challenge }: { challenge: Challenge }) {
                                 <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-2">Size</p>
                                 <div className="flex gap-1.5">
                                     {(['xs', 'sm', 'md'] as const).map((s) => (
-                                        <button key={s} onClick={() => updateChallenge(challenge.id, { cellSize: s })}
+                                        <button key={s} onClick={() => handleStyleChange({ cellSize: s })}
                                             className={cn('px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all uppercase',
-                                                challenge.cellSize === s ? 'bg-violet-600 border-violet-500 text-white' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white')}
-                                        >{s}</button>
+                                                challenge.cellSize === s ? 'bg-violet-600 border-violet-500 text-white' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white')}>
+                                            {s}
+                                        </button>
                                     ))}
                                 </div>
                             </div>
@@ -234,7 +249,7 @@ function GridTab({ challenge }: { challenge: Challenge }) {
             </AnimatePresence>
 
             {/* Grid */}
-            <div className="relative" onClick={handleGridClick}>
+            <div className="relative" onClick={() => setActiveCell(null)}>
                 <div className="flex flex-wrap gap-0.5 bg-zinc-950 border border-zinc-800 rounded-2xl p-4 max-h-[500px] overflow-y-auto scrollbar-thin">
                     {challenge.gridCells.map((cell) => {
                         const category = cat(cell.categoryId)
@@ -246,12 +261,9 @@ function GridTab({ challenge }: { challenge: Challenge }) {
                                 onClick={(e) => handleCellClick(e, cell)}
                                 className={cn(
                                     'flex-shrink-0 border transition-all duration-150',
-                                    sizeClass,
-                                    shapeClass,
+                                    sizeClass, shapeClass,
                                     isActive && 'ring-2 ring-white/60 ring-offset-1 ring-offset-zinc-950',
-                                    cell.status === 'completed'
-                                        ? 'border-transparent'
-                                        : 'bg-zinc-800 border-zinc-700/50 hover:bg-zinc-700',
+                                    cell.status !== 'completed' && 'bg-zinc-800 border-zinc-700/50 hover:bg-zinc-700',
                                 )}
                                 style={cell.status === 'completed' ? {
                                     backgroundColor: category ? category.color : '#8b5cf6',
@@ -286,7 +298,6 @@ function GridTab({ challenge }: { challenge: Challenge }) {
                 )}
             </div>
 
-            {/* Cell popover */}
             <AnimatePresence>
                 {activeCell && (
                     <CellPopover
@@ -314,13 +325,19 @@ function CategoriesTab({ challenge }: { challenge: Challenge }) {
     const handleLog = (catId: string) => {
         const val = parseFloat(logInputs[catId] ?? '')
         if (isNaN(val) || val <= 0) return
-        logCategoryEntry(challenge.id, catId, val)
+        const updatedCats = logCategoryEntry(challenge.id, catId, val)
+        syncChallengeData(challenge.id, { categories: updatedCats }) // fire-and-forget
         setLogInputs((prev) => ({ ...prev, [catId]: '' }))
+    }
+
+    const handleDelete = (catId: string) => {
+        const { categories, gridCells } = deleteCategory(challenge.id, catId)
+        syncChallengeData(challenge.id, { categories, grid_cells: gridCells }) // fire-and-forget
+        setDeletingId(null)
     }
 
     return (
         <div>
-            {/* Header action */}
             <div className="flex items-center justify-between mb-5">
                 <p className="text-sm text-zinc-500">
                     {challenge.categories.length === 0
@@ -346,17 +363,12 @@ function CategoriesTab({ challenge }: { challenge: Challenge }) {
                     {challenge.categories.map((cat) => {
                         const cellsTagged = challenge.gridCells.filter((c) => c.categoryId === cat.id && c.status === 'completed').length
                         return (
-                            <motion.div
-                                key={cat.id}
-                                layout
-                                className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4"
-                            >
+                            <motion.div key={cat.id} layout className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                                        <div className="w-10 h-10 rounded-xl flex-shrink-0" style={{ backgroundColor: cat.color + '22', border: `2px solid ${cat.color}` }}>
-                                            <div className="w-full h-full flex items-center justify-center">
-                                                <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: cat.color }} />
-                                            </div>
+                                        <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center"
+                                            style={{ backgroundColor: cat.color + '22', border: `2px solid ${cat.color}` }}>
+                                            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: cat.color }} />
                                         </div>
                                         <div className="min-w-0">
                                             <p className="text-sm font-bold text-white truncate">{cat.name}</p>
@@ -374,28 +386,23 @@ function CategoriesTab({ challenge }: { challenge: Challenge }) {
                                         </button>
                                         {deletingId === cat.id ? (
                                             <div className="flex items-center gap-1">
-                                                <button onClick={() => { deleteCategory(challenge.id, cat.id); setDeletingId(null) }}
+                                                <button onClick={() => handleDelete(cat.id)}
                                                     className="px-2 py-1 text-[11px] font-bold rounded-lg bg-red-950/50 text-red-400 hover:bg-red-900 border border-red-800 transition-colors whitespace-nowrap">
                                                     Confirm
                                                 </button>
                                                 <button onClick={() => setDeletingId(null)} className="text-zinc-600 hover:text-zinc-400 text-xs px-1">✕</button>
                                             </div>
                                         ) : (
-                                            <button
-                                                onClick={() => setDeletingId(cat.id)}
-                                                className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-950/30 transition-colors"
-                                            >
+                                            <button onClick={() => setDeletingId(cat.id)}
+                                                className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-950/30 transition-colors">
                                                 <Trash2 size={13} />
                                             </button>
                                         )}
                                     </div>
                                 </div>
-
-                                {/* Log entry */}
                                 <div className="mt-3 flex items-center gap-2">
                                     <input
-                                        type="number"
-                                        min={0}
+                                        type="number" min={0}
                                         value={logInputs[cat.id] ?? ''}
                                         onChange={(e) => setLogInputs((prev) => ({ ...prev, [cat.id]: e.target.value }))}
                                         onKeyDown={(e) => e.key === 'Enter' && handleLog(cat.id)}
@@ -447,12 +454,8 @@ export function ChallengeDetailView({ challengeId, onBack }: { challengeId: stri
 
     return (
         <motion.div initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}>
-            {/* Back + title */}
             <div className="flex items-center gap-4 mb-6">
-                <button
-                    onClick={onBack}
-                    className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-900 border border-zinc-800 transition-colors"
-                >
+                <button onClick={onBack} className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-900 border border-zinc-800 transition-colors">
                     <ArrowLeft size={18} />
                 </button>
                 <div className="flex-1 min-w-0">
@@ -460,9 +463,7 @@ export function ChallengeDetailView({ challengeId, onBack }: { challengeId: stri
                         <h1 className="text-2xl font-extrabold text-white truncate">{challenge.title}</h1>
                         <span className={cn(
                             'px-2.5 py-0.5 rounded-full text-[11px] font-bold border',
-                            challenge.isPrivate
-                                ? 'bg-zinc-800 text-zinc-400 border-zinc-700'
-                                : 'bg-violet-900/40 text-violet-300 border-violet-700/50'
+                            challenge.isPrivate ? 'bg-zinc-800 text-zinc-400 border-zinc-700' : 'bg-violet-900/40 text-violet-300 border-violet-700/50'
                         )}>
                             {challenge.isPrivate ? '🔒 Private' : '🌐 Community'}
                         </span>
@@ -480,7 +481,6 @@ export function ChallengeDetailView({ challengeId, onBack }: { challengeId: stri
                 </div>
             </div>
 
-            {/* Tabs */}
             <div className="inline-flex bg-zinc-900 border border-zinc-800 rounded-2xl p-1 gap-1 mb-6">
                 {([
                     { id: 'grid', label: 'Grid', icon: <Grid3x3 size={14} /> },
@@ -491,9 +491,7 @@ export function ChallengeDetailView({ challengeId, onBack }: { challengeId: stri
                         onClick={() => setTab(t.id)}
                         className={cn(
                             'flex items-center gap-1.5 px-5 py-2 rounded-xl text-sm font-bold transition-all duration-200',
-                            tab === t.id
-                                ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/25'
-                                : 'text-zinc-400 hover:text-white'
+                            tab === t.id ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/25' : 'text-zinc-400 hover:text-white'
                         )}
                     >
                         {t.icon} {t.label}
@@ -501,7 +499,6 @@ export function ChallengeDetailView({ challengeId, onBack }: { challengeId: stri
                 ))}
             </div>
 
-            {/* Tab content */}
             <AnimatePresence mode="wait">
                 {tab === 'grid' ? (
                     <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>

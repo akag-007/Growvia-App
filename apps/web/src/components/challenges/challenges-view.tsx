@@ -9,6 +9,7 @@ import {
 import { useChallengesStore, Challenge } from '@/stores/challenges'
 import { CreateChallengeModal } from './create-challenge-modal'
 import { ChallengeDetailView } from './challenge-detail-view'
+import { deleteChallenge as deleteChallengeAction } from '@/actions/challenges'
 import { cn } from '@/lib/utils'
 import { format, addDays, parseISO } from 'date-fns'
 
@@ -258,24 +259,41 @@ function EmptyState({ onNew }: { onNew: () => void }) {
 
 type Tab = 'mine' | 'community'
 
-export function ChallengesView() {
-    const { challenges, deleteChallenge, addChallenge, setActiveChallenge, activeChallengeId } = useChallengesStore()
+import type { ChallengeRow } from '@/actions/challenges'
+
+export function ChallengesView({ initialChallenges }: { initialChallenges: ChallengeRow[] }) {
+    const { challenges, hydrate, removeChallengeOptimistic, addChallengeOptimistic, confirmChallenge, setActiveChallenge, activeChallengeId } = useChallengesStore()
     const [showCreate, setShowCreate] = useState(false)
     const [tab, setTab] = useState<Tab>('mine')
 
-    const handleJoinCommunity = (c: typeof COMMUNITY_CHALLENGES[0]) => {
-        addChallenge({
-            title: c.title,
-            description: c.description,
-            type: 'community',
-            isPrivate: false,
-            startDate: new Date().toISOString().split('T')[0],
-            durationDays: c.durationDays,
-            trackingUnit: c.trackingUnit,
-            cellShape: 'square',
-            cellSize: 'sm',
+    // Hydrate store from server-fetched data on mount
+    React.useEffect(() => { hydrate(initialChallenges) }, [])
+
+    const handleDelete = (id: string) => {
+        removeChallengeOptimistic(id)
+        deleteChallengeAction(id) // fire-and-forget
+    }
+
+    const handleJoinCommunity = async (c: typeof COMMUNITY_CHALLENGES[0]) => {
+        const { createChallenge } = await import('@/actions/challenges')
+        const tempId = 'tmp-' + Date.now()
+        const total = c.trackingUnit === 'hours' ? c.durationDays * 24 : c.trackingUnit === 'weeks' ? Math.ceil(c.durationDays / 7) : c.durationDays
+        addChallengeOptimistic({
+            id: tempId, title: c.title, description: c.description, type: 'community',
+            isPrivate: false, startDate: new Date().toISOString().split('T')[0],
+            durationDays: c.durationDays, trackingUnit: c.trackingUnit,
+            totalCells: total, cellShape: 'square', cellSize: 'sm',
+            gridCells: Array.from({ length: total }, (_, i) => ({ index: i, status: 'empty' as const })),
+            categories: [], createdAt: new Date().toISOString(),
         })
         setTab('mine')
+        const result = await createChallenge({
+            title: c.title, description: c.description, type: 'community',
+            isPrivate: false, startDate: new Date().toISOString().split('T')[0],
+            durationDays: c.durationDays, trackingUnit: c.trackingUnit,
+            cellShape: 'square', cellSize: 'sm',
+        })
+        if (result.success && result.data) confirmChallenge(tempId, result.data)
     }
 
     // If a challenge is open, show detail view
@@ -358,7 +376,7 @@ export function ChallengesView() {
                                             key={ch.id}
                                             challenge={ch}
                                             onView={() => setActiveChallenge(ch.id)}
-                                            onDelete={() => deleteChallenge(ch.id)}
+                                            onDelete={() => handleDelete(ch.id)}
                                         />
                                     ))}
                                 </AnimatePresence>
