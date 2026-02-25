@@ -31,9 +31,7 @@ function cellLabel(cell: GridCell, challenge: Challenge) {
     return format(date, 'MMM d, yyyy')
 }
 
-function unitLabel(u: Category['unit']) {
-    return u === 'minutes' ? 'min' : u === 'hours' ? 'hr' : ''
-}
+
 
 // ─── Category Popover (right-click) ──────────────────────────────────────────
 
@@ -117,7 +115,10 @@ function CategoryPopover({ cell, challenge, onClose, anchorEl }: {
 
 // ─── Grid Tab ─────────────────────────────────────────────────────────────────
 
-function GridTab({ challenge }: { challenge: Challenge }) {
+function GridTab({ challenge, onAddCategory }: {
+    challenge: Challenge;
+    onAddCategory: (range?: { lo: number; hi: number }) => void
+}) {
     const { updateChallengeStyle: updateStyle, setCellsRange } = useChallengesStore()
     const [catPopover, setCatPopover] = useState<{ cell: GridCell; el: HTMLElement } | null>(null)
     const [gridStyleHover, setGridStyleHover] = useState(false)
@@ -128,6 +129,7 @@ function GridTab({ challenge }: { challenge: Challenge }) {
     // 'completed' = dragging to fill, 'empty' = dragging to clear
     const dragTargetStatus = useRef<'completed' | 'empty'>('completed')
     const isDragging = useRef(false)
+    const [pendingSelection, setPendingSelection] = useState<{ lo: number; hi: number } | null>(null)
 
     const completed = challenge.gridCells.filter((c) => c.status === 'completed').length
     const total = challenge.totalCells
@@ -153,8 +155,14 @@ function GridTab({ challenge }: { challenge: Challenge }) {
         const lo = Math.min(dragStartIdx, end)
         const hi = Math.max(dragStartIdx, end)
         const target = dragTargetStatus.current
-        const updatedCells = setCellsRange(challenge.id, lo, hi, target)
-        toggleGridCell(challenge.id, updatedCells)
+
+        if (target === 'completed') {
+            setPendingSelection({ lo, hi })
+        } else {
+            const updatedCells = setCellsRange(challenge.id, lo, hi, target)
+            toggleGridCell(challenge.id, updatedCells)
+        }
+
         isDragging.current = false
         setDragStartIdx(null)
         setDragEndIdx(null)
@@ -222,8 +230,7 @@ function GridTab({ challenge }: { challenge: Challenge }) {
             <div className="mb-3">
                 <div className="flex items-center justify-between">
                     <p className="text-xs text-zinc-500">
-                        Click or drag to toggle ·{' '}
-                        {challenge.categories.length > 0 ? 'Right-click to assign category' : 'Add categories to colour-code cells'}
+                        Click or drag to toggle {challenge.categories.length === 0 && '· Add categories to colour-code cells'}
                     </p>
 
                     {/* Hover-activated dropdown button */}
@@ -402,6 +409,115 @@ function GridTab({ challenge }: { challenge: Challenge }) {
                     />
                 )}
             </AnimatePresence>
+
+            <AnimatePresence>
+                {pendingSelection && (
+                    <CategorySelectionPrompt
+                        challenge={challenge}
+                        range={pendingSelection}
+                        onClose={() => setPendingSelection(null)}
+                        onSelect={(catId) => {
+                            const updatedCells = setCellsRange(challenge.id, pendingSelection.lo, pendingSelection.hi, 'completed', catId)
+                            toggleGridCell(challenge.id, updatedCells)
+                            setPendingSelection(null)
+                        }}
+                        onAddCategory={() => {
+                            onAddCategory(pendingSelection)
+                            setPendingSelection(null)
+                        }}
+                    />
+                )}
+            </AnimatePresence>
+        </div>
+    )
+}
+
+// ─── Bulk Category Selection Prompt ──────────────────────────────────────────
+
+function CategorySelectionPrompt({ challenge, range, onClose, onSelect, onAddCategory }: {
+    challenge: Challenge
+    range: { lo: number; hi: number }
+    onClose: () => void
+    onSelect: (catId: string | undefined) => void
+    onAddCategory: () => void
+}) {
+    const count = range.hi - range.lo + 1
+
+    return (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-2xl max-w-sm w-full"
+            >
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold text-white">Assign Category</h3>
+                    <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
+                        ✕
+                    </button>
+                </div>
+
+                <p className="text-sm text-zinc-400 mb-6">
+                    Select a category for the <span className="text-violet-400 font-bold">{count}</span> cell{count === 1 ? '' : 's'} you just marked.
+                </p>
+
+                <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin">
+                    <button
+                        onClick={() => onSelect(undefined)}
+                        className="flex items-center gap-3 p-3 rounded-2xl bg-zinc-800/50 border border-zinc-700/50 hover:bg-zinc-800 hover:border-zinc-600 transition-all text-left"
+                    >
+                        <div className="w-10 h-10 rounded-xl bg-zinc-700 flex items-center justify-center text-zinc-400">
+                            <Tag size={18} />
+                        </div>
+                        <div>
+                            <p className="text-sm font-bold text-white">None</p>
+                            <p className="text-xs text-zinc-500">Uncategorized</p>
+                        </div>
+                    </button>
+
+                    {challenge.categories.map((cat) => (
+                        <button
+                            key={cat.id}
+                            onClick={() => onSelect(cat.id)}
+                            className="flex items-center gap-3 p-3 rounded-2xl bg-zinc-800/50 border border-zinc-700/50 hover:bg-zinc-800 hover:border-zinc-600 transition-all text-left"
+                        >
+                            <div
+                                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                                style={{ backgroundColor: cat.color + '22', border: `2px solid ${cat.color}` }}
+                            >
+                                <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: cat.color }} />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-white">{cat.name}</p>
+                                <p className="text-xs text-zinc-500">Apply this category</p>
+                            </div>
+                        </button>
+                    ))}
+
+                    <button
+                        onClick={onAddCategory}
+                        className="flex items-center gap-3 p-3 rounded-2xl bg-violet-600/10 border border-violet-500/30 hover:bg-violet-600/20 hover:border-violet-500/50 transition-all text-left"
+                    >
+                        <div className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center text-white">
+                            <Plus size={18} />
+                        </div>
+                        <div>
+                            <p className="text-sm font-bold text-violet-400">Add Category</p>
+                            <p className="text-xs text-violet-500/70">Create a new one</p>
+                        </div>
+                    </button>
+                </div>
+
+                <div className="mt-6">
+                    <button
+                        onClick={onClose}
+                        className="w-full py-3 rounded-2xl text-sm font-bold text-zinc-400 hover:text-white border border-transparent hover:bg-zinc-800 transition-all"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </motion.div>
         </div>
     )
 }
@@ -410,20 +526,9 @@ function GridTab({ challenge }: { challenge: Challenge }) {
 
 
 
-function CategoriesTab({ challenge }: { challenge: Challenge }) {
-    const { logCategoryEntry, deleteCategory } = useChallengesStore()
-    const [showModal, setShowModal] = useState(false)
-    const [editingCat, setEditingCat] = useState<Category | undefined>()
-    const [logInputs, setLogInputs] = useState<Record<string, string>>({})
+function CategoriesTab({ challenge, onEditCategory }: { challenge: Challenge; onEditCategory: (cat?: Category) => void }) {
+    const { deleteCategory } = useChallengesStore()
     const [deletingId, setDeletingId] = useState<string | null>(null)
-
-    const handleLog = (catId: string) => {
-        const val = parseFloat(logInputs[catId] ?? '')
-        if (isNaN(val) || val <= 0) return
-        const updatedCats = logCategoryEntry(challenge.id, catId, val)
-        syncChallengeData(challenge.id, { categories: updatedCats }) // fire-and-forget
-        setLogInputs((prev) => ({ ...prev, [catId]: '' }))
-    }
 
     const handleDelete = (catId: string) => {
         const { categories, gridCells } = deleteCategory(challenge.id, catId)
@@ -433,84 +538,86 @@ function CategoriesTab({ challenge }: { challenge: Challenge }) {
 
     return (
         <div>
-            <div className="flex items-center justify-between mb-5">
-                <p className="text-sm text-zinc-500">
-                    {challenge.categories.length === 0
-                        ? 'No categories yet — add one to colour-code your grid cells.'
-                        : `${challenge.categories.length} categor${challenge.categories.length === 1 ? 'y' : 'ies'}`}
+            <div className="flex items-center justify-between mb-6">
+                <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
+                    {challenge.categories.length} Categor{challenge.categories.length === 1 ? 'y' : 'ies'}
                 </p>
                 <button
-                    onClick={() => { setEditingCat(undefined); setShowModal(true) }}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold bg-violet-600 hover:bg-violet-500 text-white transition-colors shadow-lg shadow-violet-600/20"
+                    onClick={() => onEditCategory()}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold bg-violet-600 hover:bg-violet-500 text-white transition-all shadow-lg shadow-violet-600/20 active:scale-95"
                 >
                     <Plus size={15} /> Add Category
                 </button>
             </div>
 
             {challenge.categories.length === 0 ? (
-                <div className="text-center py-16 border border-dashed border-zinc-800 rounded-2xl">
-                    <p className="text-3xl mb-3">🏷️</p>
-                    <p className="text-zinc-400 font-semibold">No categories yet</p>
-                    <p className="text-zinc-600 text-sm mt-1">Create categories like "Arrays", "Morning Run" to track different areas.</p>
+                <div className="text-center py-20 border-2 border-dashed border-zinc-800 rounded-3xl">
+                    <div className="w-16 h-16 bg-zinc-900 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-zinc-800">
+                        <Tag size={24} className="text-zinc-600" />
+                    </div>
+                    <p className="text-zinc-400 font-bold text-lg">No categories yet</p>
+                    <p className="text-zinc-600 text-sm mt-1 max-w-[240px] mx-auto">Create categories like "Deep Work" or "Exercise" to color-code your grid cells.</p>
                 </div>
             ) : (
-                <div className="space-y-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                     {challenge.categories.map((cat) => {
                         const cellsTagged = challenge.gridCells.filter((c) => c.categoryId === cat.id && c.status === 'completed').length
+                        const pctOfTotal = challenge.totalCells > 0 ? (cellsTagged / challenge.totalCells) * 100 : 0
+                        const unit = challenge.trackingUnit === 'hours' ? 'hrs' : challenge.trackingUnit === 'weeks' ? 'wks' : 'days'
+
                         return (
-                            <motion.div key={cat.id} layout className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
-                                <div className="flex items-start justify-between gap-3">
+                            <motion.div
+                                key={cat.id}
+                                layout
+                                className="bg-zinc-900 border border-zinc-800 rounded-2xl p-3.5 hover:border-zinc-700/60 transition-all group"
+                            >
+                                <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                                        <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center"
-                                            style={{ backgroundColor: cat.color + '22', border: `2px solid ${cat.color}` }}>
-                                            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: cat.color }} />
+                                        <div className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center shadow-lg"
+                                            style={{ backgroundColor: cat.color + '22', border: `1.5px solid ${cat.color}` }}>
+                                            <div className="w-3 h-3 rounded-sm shadow-[0_0_10px_rgba(0,0,0,0.3)]" style={{ backgroundColor: cat.color }} />
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="text-sm font-bold text-white truncate">{cat.name}</p>
-                                            <p className="text-xs text-zinc-500">
-                                                {cat.totalLogged} {unitLabel(cat.unit)} logged · {cellsTagged} cells tagged
+                                            <p className="text-sm font-bold text-white truncate leading-tight">{cat.name}</p>
+                                            <p className="text-[11px] font-bold text-violet-400 mt-0.5">
+                                                {cellsTagged} {unit} <span className="text-zinc-500 font-medium ml-0.5">{pctOfTotal.toFixed(0)}%</span>
                                             </p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-1 flex-shrink-0">
+                                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button
-                                            onClick={() => { setEditingCat(cat); setShowModal(true) }}
+                                            onClick={() => onEditCategory(cat)}
                                             className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors"
                                         >
-                                            <Pencil size={13} />
+                                            <Pencil size={12} />
                                         </button>
                                         {deletingId === cat.id ? (
                                             <div className="flex items-center gap-1">
                                                 <button onClick={() => handleDelete(cat.id)}
-                                                    className="px-2 py-1 text-[11px] font-bold rounded-lg bg-red-950/50 text-red-400 hover:bg-red-900 border border-red-800 transition-colors whitespace-nowrap">
-                                                    Confirm
+                                                    className="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-red-950/50 text-red-400 hover:bg-red-900 border border-red-800 transition-colors">
+                                                    Ok
                                                 </button>
-                                                <button onClick={() => setDeletingId(null)} className="text-zinc-600 hover:text-zinc-400 text-xs px-1">✕</button>
+                                                <button onClick={() => setDeletingId(null)} className="p-1 text-zinc-600 hover:text-zinc-400 text-xs text-bold">✕</button>
                                             </div>
                                         ) : (
                                             <button onClick={() => setDeletingId(cat.id)}
                                                 className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-950/30 transition-colors">
-                                                <Trash2 size={13} />
+                                                <Trash2 size={12} />
                                             </button>
                                         )}
                                     </div>
                                 </div>
-                                <div className="mt-3 flex items-center gap-2">
-                                    <input
-                                        type="number" min={0}
-                                        value={logInputs[cat.id] ?? ''}
-                                        onChange={(e) => setLogInputs((prev) => ({ ...prev, [cat.id]: e.target.value }))}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleLog(cat.id)}
-                                        placeholder={`Log ${cat.unit === 'count' ? 'count' : cat.unit}…`}
-                                        className="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
-                                    />
-                                    <button
-                                        onClick={() => handleLog(cat.id)}
-                                        className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-colors"
-                                        style={{ backgroundColor: cat.color }}
-                                    >
-                                        + Log
-                                    </button>
+
+                                <div className="mt-3">
+                                    <div className="w-full h-1.5 bg-zinc-800/50 rounded-full overflow-hidden">
+                                        <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${pctOfTotal}%` }}
+                                            transition={{ duration: 1, ease: "easeOut" }}
+                                            className="h-full rounded-full"
+                                            style={{ backgroundColor: cat.color }}
+                                        />
+                                    </div>
                                 </div>
                             </motion.div>
                         )
@@ -518,15 +625,6 @@ function CategoriesTab({ challenge }: { challenge: Challenge }) {
                 </div>
             )}
 
-            <AnimatePresence>
-                {showModal && (
-                    <CategoryManagementModal
-                        challengeId={challenge.id}
-                        editingCategory={editingCat}
-                        onClose={() => { setShowModal(false); setEditingCat(undefined) }}
-                    />
-                )}
-            </AnimatePresence>
         </div>
     )
 }
@@ -538,11 +636,27 @@ type DetailTab = 'grid' | 'categories'
 export function ChallengeDetailView({ challengeId, onBack }: { challengeId: string; onBack: () => void }) {
     const { challenges } = useChallengesStore()
     const challenge = challenges.find((c) => c.id === challengeId)
-    const [tab, setTab] = useState<DetailTab>('grid')
 
     if (!challenge) return (
         <div className="text-center py-20 text-zinc-500">Challenge not found. <button onClick={onBack} className="text-violet-400 underline">Go back</button></div>
     )
+
+    const [tab, setTab] = useState<DetailTab>('grid')
+
+    // lifted state
+    const [showCatModal, setShowCatModal] = useState(false)
+    const [editingCat, setEditingCat] = useState<Category | undefined>()
+    const [selectionToApply, setSelectionToApply] = useState<{ lo: number, hi: number } | null>(null)
+
+    const { setCellsRange } = useChallengesStore()
+
+    const handleCategoryCreated = (cat: Category) => {
+        if (selectionToApply) {
+            const updatedCells = setCellsRange(challenge.id, selectionToApply.lo, selectionToApply.hi, 'completed', cat.id)
+            toggleGridCell(challenge.id, updatedCells)
+            setSelectionToApply(null)
+        }
+    }
 
     const completed = challenge.gridCells.filter((c) => c.status === 'completed').length
     const pct = Math.round((completed / challenge.totalCells) * 100)
@@ -673,12 +787,33 @@ export function ChallengeDetailView({ challengeId, onBack }: { challengeId: stri
             <AnimatePresence mode="wait">
                 {tab === 'grid' ? (
                     <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                        <GridTab challenge={challenge} />
+                        <GridTab
+                            challenge={challenge}
+                            onAddCategory={(range) => {
+                                setSelectionToApply(range ?? null)
+                                setEditingCat(undefined)
+                                setShowCatModal(true)
+                            }}
+                        />
                     </motion.div>
                 ) : (
                     <motion.div key="categories" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                        <CategoriesTab challenge={challenge} />
+                        <CategoriesTab
+                            challenge={challenge}
+                            onEditCategory={(c) => { setEditingCat(c); setShowCatModal(true) }}
+                        />
                     </motion.div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {showCatModal && (
+                    <CategoryManagementModal
+                        challengeId={challenge.id}
+                        editingCategory={editingCat}
+                        onClose={() => { setShowCatModal(false); setEditingCat(undefined); setSelectionToApply(null) }}
+                        onSuccess={handleCategoryCreated}
+                    />
                 )}
             </AnimatePresence>
         </motion.div>

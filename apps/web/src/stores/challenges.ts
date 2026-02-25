@@ -16,8 +16,6 @@ export interface Category {
     id: string
     name: string
     color: string
-    unit: 'minutes' | 'hours' | 'count'
-    totalLogged: number
 }
 
 export interface Challenge {
@@ -95,14 +93,14 @@ interface ChallengesState {
     // Grid — optimistic; caller is responsible for persisting to DB
     toggleCell: (challengeId: string, cellIndex: number) => GridCell[]
     // Bulk range toggle — sets all cells [lo..hi] to targetStatus
-    setCellsRange: (challengeId: string, lo: number, hi: number, targetStatus: CellStatus) => GridCell[]
+    setCellsRange: (challengeId: string, lo: number, hi: number, targetStatus: CellStatus, categoryId?: string) => GridCell[]
     setCellCategory: (challengeId: string, cellIndex: number, categoryId: string | undefined) => GridCell[]
 
     // Categories — optimistic; caller persists to DB
-    addCategory: (challengeId: string, data: Omit<Category, 'id' | 'totalLogged'>) => Category[]
-    updateCategory: (challengeId: string, categoryId: string, updates: Partial<Omit<Category, 'id'>>) => Category[]
+    addCategory: (challengeId: string, data: Omit<Category, 'id'>) => { categories: Category[]; category: Category }
+    updateCategory: (challengeId: string, categoryId: string, updates: Partial<Omit<Category, 'id'>>) => { categories: Category[]; category: Category }
     deleteCategory: (challengeId: string, categoryId: string) => { categories: Category[]; gridCells: GridCell[] }
-    logCategoryEntry: (challengeId: string, categoryId: string, amount: number) => Category[]
+    logCategoryEntry: (challengeId: string, categoryId: string, amount: number) => Category[] // Keeping this for now to avoid breaking types too much, but it's unused
 
     // Style — optimistic; caller persists to DB
     updateChallengeStyle: (id: string, updates: Partial<Pick<Challenge, 'cellShape' | 'cellSize' | 'gridColumns'>>) => void
@@ -151,14 +149,14 @@ export const useChallengesStore = create<ChallengesState>((set, get) => ({
         return updatedCells
     },
 
-    setCellsRange: (challengeId, lo, hi, targetStatus) => {
+    setCellsRange: (challengeId, lo, hi, targetStatus, categoryId) => {
         let updatedCells: GridCell[] = []
         set((s) => ({
             challenges: s.challenges.map((c) => {
                 if (c.id !== challengeId) return c
                 const cells = c.gridCells.map((cell) =>
                     cell.index >= lo && cell.index <= hi
-                        ? { ...cell, status: targetStatus }
+                        ? { ...cell, status: targetStatus, categoryId: targetStatus === 'completed' ? categoryId : undefined }
                         : cell
                 )
                 updatedCells = cells
@@ -184,7 +182,7 @@ export const useChallengesStore = create<ChallengesState>((set, get) => ({
     },
 
     addCategory: (challengeId, data) => {
-        const category: Category = { ...data, id: uid(), totalLogged: 0 }
+        const category: Category = { ...data, id: uid() }
         let updatedCats: Category[] = []
         set((s) => ({
             challenges: s.challenges.map((c) => {
@@ -194,22 +192,27 @@ export const useChallengesStore = create<ChallengesState>((set, get) => ({
                 return { ...c, categories: cats }
             }),
         }))
-        return updatedCats
+        return { categories: updatedCats, category }
     },
 
     updateCategory: (challengeId, categoryId, updates) => {
         let updatedCats: Category[] = []
+        let updatedCat: Category | undefined
         set((s) => ({
             challenges: s.challenges.map((c) => {
                 if (c.id !== challengeId) return c
-                const cats = c.categories.map((cat) =>
-                    cat.id === categoryId ? { ...cat, ...updates } : cat
-                )
+                const cats = c.categories.map((cat) => {
+                    if (cat.id === categoryId) {
+                        updatedCat = { ...cat, ...updates }
+                        return updatedCat
+                    }
+                    return cat
+                })
                 updatedCats = cats
                 return { ...c, categories: cats }
             }),
         }))
-        return updatedCats
+        return { categories: updatedCats, category: updatedCat! }
     },
 
     deleteCategory: (challengeId, categoryId) => {

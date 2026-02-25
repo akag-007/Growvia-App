@@ -11,6 +11,7 @@ interface Props {
     challengeId: string
     editingCategory?: Category
     onClose: () => void
+    onSuccess?: (category: Category) => void
 }
 
 const PRESET_COLORS = [
@@ -20,19 +21,14 @@ const PRESET_COLORS = [
     '#fbbf24', '#34d399', '#60a5fa', '#c084fc',
 ]
 
-const UNITS: { label: string; value: Category['unit'] }[] = [
-    { label: 'Minutes', value: 'minutes' },
-    { label: 'Hours', value: 'hours' },
-    { label: 'Count', value: 'count' },
-]
 
-export function CategoryManagementModal({ challengeId, editingCategory, onClose }: Props) {
+
+export function CategoryManagementModal({ challengeId, editingCategory, onClose, onSuccess }: Props) {
     const { addCategory, updateCategory, challenges } = useChallengesStore()
     const isEditing = !!editingCategory
 
     const [name, setName] = useState(editingCategory?.name ?? '')
     const [color, setColor] = useState(editingCategory?.color ?? '#8b5cf6')
-    const [unit, setUnit] = useState<Category['unit']>(editingCategory?.unit ?? 'count')
     const [nameError, setNameError] = useState('')
     const [saving, setSaving] = useState(false)
 
@@ -41,15 +37,22 @@ export function CategoryManagementModal({ challengeId, editingCategory, onClose 
         setNameError('')
         setSaving(true)
 
-        let updatedCats: Category[]
+        let result: { categories: Category[]; category: Category }
         if (isEditing) {
-            updatedCats = updateCategory(challengeId, editingCategory.id, { name: name.trim(), color, unit })
+            result = updateCategory(challengeId, editingCategory.id, { name: name.trim(), color })
         } else {
-            updatedCats = addCategory(challengeId, { name: name.trim(), color, unit })
+            result = addCategory(challengeId, { name: name.trim(), color })
         }
 
-        // Persist to Supabase (fire-and-forget with await for correctness)
-        await syncChallengeData(challengeId, { categories: updatedCats })
+        const { categories, category } = result
+
+        // Persist to Supabase
+        await syncChallengeData(challengeId, { categories })
+
+        if (onSuccess) {
+            onSuccess(category)
+        }
+
         setSaving(false)
         onClose()
     }
@@ -122,24 +125,7 @@ export function CategoryManagementModal({ challengeId, editingCategory, onClose 
                     </div>
                 </div>
 
-                {/* Unit */}
-                <div>
-                    <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Tracking Unit</label>
-                    <div className="flex gap-2">
-                        {UNITS.map((u) => (
-                            <button
-                                key={u.value}
-                                onClick={() => setUnit(u.value)}
-                                className={cn(
-                                    'flex-1 py-2 rounded-xl text-xs font-bold border transition-all',
-                                    unit === u.value ? 'bg-violet-600 border-violet-500 text-white' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
-                                )}
-                            >
-                                {u.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
+
 
                 {/* Actions */}
                 <div className="flex gap-2 pt-1">
