@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { useChallengesStore, Challenge, Category, GridCell } from '@/stores/challenges'
 import { CategoryManagementModal } from './category-management-modal'
+import { ChallengeStatsSidebar } from './challenge-stats-sidebar'
 import { toggleGridCell, setCellCategoryDb, syncChallengeData, updateChallengeStyle } from '@/actions/challenges'
 import { cn } from '@/lib/utils'
 import { format, addDays, parseISO } from 'date-fns'
@@ -647,6 +648,7 @@ export function ChallengeDetailView({ challengeId, onBack }: { challengeId: stri
     const [showCatModal, setShowCatModal] = useState(false)
     const [editingCat, setEditingCat] = useState<Category | undefined>()
     const [selectionToApply, setSelectionToApply] = useState<{ lo: number, hi: number } | null>(null)
+    const [showStats, setShowStats] = useState(false)
 
     const { setCellsRange } = useChallengesStore()
 
@@ -816,6 +818,12 @@ export function ChallengeDetailView({ challengeId, onBack }: { challengeId: stri
                     />
                 )}
             </AnimatePresence>
+
+            <ChallengeStatsSidebar
+                challenge={challenge}
+                isOpen={showStats}
+                onToggle={() => setShowStats(!showStats)}
+            />
         </motion.div>
     )
 }

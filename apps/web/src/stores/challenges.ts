@@ -10,6 +10,7 @@ export interface GridCell {
     index: number
     status: CellStatus
     categoryId?: string
+    completedAt?: string
 }
 
 export interface Category {
@@ -137,11 +138,17 @@ export const useChallengesStore = create<ChallengesState>((set, get) => ({
         set((s) => ({
             challenges: s.challenges.map((c) => {
                 if (c.id !== challengeId) return c
-                const cells = c.gridCells.map((cell) =>
-                    cell.index === cellIndex
-                        ? { ...cell, status: (cell.status === 'completed' ? 'empty' : 'completed') as CellStatus }
-                        : cell
-                )
+                const cells = c.gridCells.map((cell) => {
+                    if (cell.index === cellIndex) {
+                        const newStatus = cell.status === 'completed' ? 'empty' : 'completed'
+                        return {
+                            ...cell,
+                            status: newStatus as CellStatus,
+                            completedAt: newStatus === 'completed' ? new Date().toISOString() : undefined
+                        }
+                    }
+                    return cell
+                })
                 updatedCells = cells
                 return { ...c, gridCells: cells }
             }),
@@ -154,11 +161,17 @@ export const useChallengesStore = create<ChallengesState>((set, get) => ({
         set((s) => ({
             challenges: s.challenges.map((c) => {
                 if (c.id !== challengeId) return c
-                const cells = c.gridCells.map((cell) =>
-                    cell.index >= lo && cell.index <= hi
-                        ? { ...cell, status: targetStatus, categoryId: targetStatus === 'completed' ? categoryId : undefined }
-                        : cell
-                )
+                const cells = c.gridCells.map((cell) => {
+                    if (cell.index >= lo && cell.index <= hi) {
+                        return {
+                            ...cell,
+                            status: targetStatus,
+                            categoryId: targetStatus === 'completed' ? categoryId : undefined,
+                            completedAt: targetStatus === 'completed' ? new Date().toISOString() : undefined
+                        }
+                    }
+                    return cell
+                })
                 updatedCells = cells
                 return { ...c, gridCells: cells }
             }),
