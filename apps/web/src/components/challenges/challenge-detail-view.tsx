@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
     ArrowLeft, Settings2, Plus, Pencil, Trash2,
-    BarChart3, Grid3x3, Tag,
+    BarChart3, Grid3x3, Tag, Calendar, Flag,
 } from 'lucide-react'
 import { useChallengesStore, Challenge, Category, GridCell } from '@/stores/challenges'
 import { CategoryManagementModal } from './category-management-modal'
@@ -208,22 +208,7 @@ function GridTab({ challenge }: { challenge: Challenge }) {
 
     return (
         <div>
-            {/* Stats bar */}
-            <div className="grid grid-cols-4 gap-3 mb-5">
-                {[
-                    { label: 'Completed', value: `${completed}/${total}`, accent: 'text-violet-400' },
-                    { label: 'Progress', value: `${pct}%`, accent: 'text-emerald-400' },
-                    { label: 'Days Left', value: daysLeft > 0 ? `${daysLeft}d` : 'Done!', accent: 'text-amber-400' },
-                    { label: 'End Date', value: format(endDate, 'MMM d'), accent: 'text-blue-400' },
-                ].map((s) => (
-                    <div key={s.label} className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-center">
-                        <p className={cn('text-lg font-extrabold', s.accent)}>{s.value}</p>
-                        <p className="text-[10px] text-zinc-600 uppercase tracking-wider mt-0.5">{s.label}</p>
-                    </div>
-                ))}
-            </div>
-
-            {/* Progress bar */}
+            {/* Progress bar only */}
             <div className="h-1.5 bg-zinc-800 rounded-full mb-5 overflow-hidden">
                 <motion.div
                     initial={{ width: 0 }}
@@ -561,36 +546,112 @@ export function ChallengeDetailView({ challengeId, onBack }: { challengeId: stri
 
     const completed = challenge.gridCells.filter((c) => c.status === 'completed').length
     const pct = Math.round((completed / challenge.totalCells) * 100)
+    const endDate = addDays(parseISO(challenge.startDate), challenge.durationDays - 1)
+    const daysLeft = Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / 86400000))
 
     return (
         <motion.div initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}>
-            <div className="flex items-center gap-4 mb-6">
-                <button onClick={onBack} className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-900 border border-zinc-800 transition-colors">
-                    <ArrowLeft size={18} />
-                </button>
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <h1 className="text-2xl font-extrabold text-white truncate">{challenge.title}</h1>
-                        <span className={cn(
-                            'px-2.5 py-0.5 rounded-full text-[11px] font-bold border',
-                            challenge.isPrivate ? 'bg-zinc-800 text-zinc-400 border-zinc-700' : 'bg-violet-900/40 text-violet-300 border-violet-700/50'
-                        )}>
-                            {challenge.isPrivate ? '🔒 Private' : '🌐 Community'}
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold border bg-zinc-800 text-zinc-400 border-zinc-700 capitalize">
-                            {challenge.trackingUnit}
-                        </span>
+            {/* 2-col grid: [title+timeline stacked] | [ring centred] */}
+            <div className="grid grid-cols-[1fr_auto] items-start gap-x-8 mb-6">
+
+                {/* LEFT TOP: title row */}
+                <div className="flex items-center gap-4">
+                    <button onClick={onBack} className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-900 border border-zinc-800 transition-colors">
+                        <ArrowLeft size={18} />
+                    </button>
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <h1 className="text-2xl font-extrabold text-white truncate">{challenge.title}</h1>
+                            <span className={cn(
+                                'px-2.5 py-0.5 rounded-full text-[11px] font-bold border',
+                                challenge.isPrivate ? 'bg-zinc-800 text-zinc-400 border-zinc-700' : 'bg-violet-900/40 text-violet-300 border-violet-700/50'
+                            )}>
+                                {challenge.isPrivate ? '🔒 Private' : '🌐 Community'}
+                            </span>
+                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold border bg-zinc-800 text-zinc-400 border-zinc-700 capitalize">
+                                {challenge.trackingUnit}
+                            </span>
+                        </div>
+                        {challenge.description && (
+                            <p className="text-zinc-500 text-sm mt-0.5 truncate">{challenge.description}</p>
+                        )}
                     </div>
-                    {challenge.description && (
-                        <p className="text-zinc-500 text-sm mt-0.5 truncate">{challenge.description}</p>
-                    )}
                 </div>
-                <div className="text-right flex-shrink-0">
-                    <p className="text-2xl font-extrabold text-violet-400">{pct}%</p>
-                    <p className="text-xs text-zinc-600">{completed}/{challenge.totalCells}</p>
+
+                {/* RIGHT: ring — top-right, aligned with title */}
+                <div className="flex flex-col items-center gap-2">
+                    <div className="relative w-24 h-24">
+                        <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
+                            <circle cx="32" cy="32" r="26" fill="none" stroke="#27272a" strokeWidth="5" />
+                            <circle
+                                cx="32" cy="32" r="26"
+                                fill="none"
+                                stroke="url(#progGradient)"
+                                strokeWidth="5"
+                                strokeLinecap="round"
+                                strokeDasharray="163.4"
+                                strokeDashoffset={163.4 - (163.4 * pct) / 100}
+                                style={{ transition: 'stroke-dashoffset 0.6s ease-out' }}
+                            />
+                            <defs>
+                                <linearGradient id="progGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stopColor="#7c3aed" />
+                                    <stop offset="100%" stopColor="#a78bfa" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-base font-extrabold text-violet-400">{pct}%</span>
+                        </div>
+                    </div>
+                    <div className="text-center">
+                        <p className="text-base font-bold text-white leading-none">
+                            <span className="text-violet-400">{completed}</span>
+                            <span className="text-zinc-500 mx-1">/</span>
+                            <span>{challenge.totalCells}</span>
+                        </p>
+                        <p className="text-[11px] text-zinc-500 capitalize mt-0.5">{challenge.trackingUnit}</p>
+                    </div>
                 </div>
+
+                {/* BOTTOM: timeline — spans full width, centres itself */}
+                <div className="col-span-2 flex items-center gap-0 px-2 mt-4 w-full max-w-3xl mx-auto">
+                    {/* Start date */}
+                    <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+                        <div className="w-9 h-9 rounded-full border-2 border-emerald-500 bg-emerald-500/10 flex items-center justify-center">
+                            <Calendar size={15} className="text-emerald-400" />
+                        </div>
+                        <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Start Date</p>
+                        <p className="text-sm font-bold text-white">{format(parseISO(challenge.startDate), 'MMM d, yyyy')}</p>
+                    </div>
+
+                    <div className="flex-1 border-t-2 border-dashed border-zinc-700 mx-2" />
+
+                    <div className="flex-shrink-0 px-3 py-1.5 rounded-full border-2 text-xs font-extrabold tracking-wide"
+                        style={{
+                            borderColor: daysLeft > 0 ? '#4ade80' : '#f59e0b',
+                            color: daysLeft > 0 ? '#4ade80' : '#f59e0b',
+                            backgroundColor: daysLeft > 0 ? '#4ade8010' : '#f59e0b10',
+                        }}
+                    >
+                        {daysLeft > 0 ? `${daysLeft} DAYS LEFT` : 'COMPLETED'}
+                    </div>
+
+                    <div className="flex-1 border-t-2 border-dashed border-zinc-700 mx-2" />
+
+                    {/* End date */}
+                    <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+                        <div className="w-9 h-9 rounded-full border-2 border-orange-500 bg-orange-500/10 flex items-center justify-center">
+                            <Flag size={15} className="text-orange-400" />
+                        </div>
+                        <p className="text-[10px] text-zinc-500 uppercase tracking-wider">End Date</p>
+                        <p className="text-sm font-bold text-white">{format(endDate, 'MMM d, yyyy')}</p>
+                    </div>
+                </div>
+
             </div>
 
+            {/* Tab selector */}
             <div className="inline-flex bg-zinc-900 border border-zinc-800 rounded-2xl p-1 gap-1 mb-6">
                 {([
                     { id: 'grid', label: 'Grid', icon: <Grid3x3 size={14} /> },
