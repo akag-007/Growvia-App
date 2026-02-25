@@ -33,7 +33,8 @@ export interface Challenge {
     gridCells: GridCell[]
     categories: Category[]
     cellShape: 'square' | 'circle' | 'rounded'
-    cellSize: 'xs' | 'sm' | 'md'
+    cellSize: number      // pixel size, e.g. 8, 10, 14, 20
+    gridColumns: number
     createdAt: string
 }
 
@@ -60,7 +61,8 @@ export function rowToChallenge(row: ChallengeRow): Challenge {
         gridCells: row.grid_cells,
         categories: row.categories,
         cellShape: row.cell_shape,
-        cellSize: row.cell_size,
+        cellSize: row.cell_size ?? 14,
+        gridColumns: row.grid_columns ?? 20,
         createdAt: row.created_at,
     }
 }
@@ -92,6 +94,8 @@ interface ChallengesState {
 
     // Grid — optimistic; caller is responsible for persisting to DB
     toggleCell: (challengeId: string, cellIndex: number) => GridCell[]
+    // Bulk range toggle — sets all cells [lo..hi] to targetStatus
+    setCellsRange: (challengeId: string, lo: number, hi: number, targetStatus: CellStatus) => GridCell[]
     setCellCategory: (challengeId: string, cellIndex: number, categoryId: string | undefined) => GridCell[]
 
     // Categories — optimistic; caller persists to DB
@@ -101,7 +105,7 @@ interface ChallengesState {
     logCategoryEntry: (challengeId: string, categoryId: string, amount: number) => Category[]
 
     // Style — optimistic; caller persists to DB
-    updateChallengeStyle: (id: string, updates: Partial<Pick<Challenge, 'cellShape' | 'cellSize'>>) => void
+    updateChallengeStyle: (id: string, updates: Partial<Pick<Challenge, 'cellShape' | 'cellSize' | 'gridColumns'>>) => void
 }
 
 export const useChallengesStore = create<ChallengesState>((set, get) => ({
@@ -138,6 +142,23 @@ export const useChallengesStore = create<ChallengesState>((set, get) => ({
                 const cells = c.gridCells.map((cell) =>
                     cell.index === cellIndex
                         ? { ...cell, status: (cell.status === 'completed' ? 'empty' : 'completed') as CellStatus }
+                        : cell
+                )
+                updatedCells = cells
+                return { ...c, gridCells: cells }
+            }),
+        }))
+        return updatedCells
+    },
+
+    setCellsRange: (challengeId, lo, hi, targetStatus) => {
+        let updatedCells: GridCell[] = []
+        set((s) => ({
+            challenges: s.challenges.map((c) => {
+                if (c.id !== challengeId) return c
+                const cells = c.gridCells.map((cell) =>
+                    cell.index >= lo && cell.index <= hi
+                        ? { ...cell, status: targetStatus }
                         : cell
                 )
                 updatedCells = cells

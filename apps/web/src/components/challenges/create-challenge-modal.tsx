@@ -23,7 +23,7 @@ interface FormData {
     durationDays: number
     trackingUnit: TrackingUnit
     cellShape: 'square' | 'circle' | 'rounded'
-    cellSize: 'xs' | 'sm' | 'md'
+    cellSize: number   // pixel size, e.g. 10, 14, 20
 }
 
 const TRACKING_UNITS: { label: string; value: TrackingUnit; desc: string }[] = [
@@ -42,15 +42,15 @@ const DURATION_PRESETS = [
 
 // ─── Mini Grid Preview ────────────────────────────────────────────────────────
 
-function GridPreview({ total, shape, size }: { total: number; shape: string; size: string }) {
-    const maxShow = Math.min(total, size === 'xs' ? 200 : size === 'sm' ? 150 : 100)
+function GridPreview({ total, shape, sizePx }: { total: number; shape: string; sizePx: number }) {
+    const maxShow = Math.min(total, 200)
     const cells = Array.from({ length: maxShow })
     const shapeClass = shape === 'circle' ? 'rounded-full' : shape === 'rounded' ? 'rounded-md' : 'rounded-sm'
-    const sizeClass = size === 'xs' ? 'w-2 h-2' : size === 'sm' ? 'w-3 h-3' : 'w-4 h-4'
     return (
         <div className="flex flex-wrap gap-0.5 p-4 bg-zinc-950 rounded-xl border border-zinc-800 max-h-40 overflow-hidden">
             {cells.map((_, i) => (
-                <div key={i} className={cn('bg-zinc-800 border border-zinc-700/50 flex-shrink-0', shapeClass, sizeClass)} />
+                <div key={i} className={cn('bg-zinc-800 flex-shrink-0', shapeClass)}
+                    style={{ width: sizePx, height: sizePx }} />
             ))}
             {total > maxShow && (
                 <span className="text-xs text-zinc-600 self-end ml-1">+{total - maxShow} more…</span>
@@ -67,6 +67,7 @@ export function CreateChallengeModal({ onClose }: Props) {
 
     const [step, setStep] = useState<Step>('basics')
     const [submitting, setSubmitting] = useState(false)
+    const [customTotalCells, setCustomTotalCells] = useState<number | null>(null)
     const [form, setForm] = useState<FormData>({
         title: '',
         description: '',
@@ -75,11 +76,12 @@ export function CreateChallengeModal({ onClose }: Props) {
         durationDays: 90,
         trackingUnit: 'days',
         cellShape: 'square',
-        cellSize: 'sm',
+        cellSize: 14,
     })
     const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
 
-    const totalCells = computeTotalCells(form.durationDays, form.trackingUnit)
+    const autoTotalCells = computeTotalCells(form.durationDays, form.trackingUnit)
+    const totalCells = customTotalCells ?? autoTotalCells
 
     const patch = (p: Partial<FormData>) => setForm((f) => ({ ...f, ...p }))
 
@@ -126,6 +128,7 @@ export function CreateChallengeModal({ onClose }: Props) {
             totalCells,
             cellShape: form.cellShape,
             cellSize: form.cellSize,
+            gridColumns: 20,
             gridCells: Array.from({ length: totalCells }, (_, i) => ({ index: i, status: 'empty' as const })),
             categories: [],
             createdAt: new Date().toISOString(),
@@ -144,6 +147,7 @@ export function CreateChallengeModal({ onClose }: Props) {
             trackingUnit: form.trackingUnit,
             cellShape: form.cellShape,
             cellSize: form.cellSize,
+            totalCells: customTotalCells ?? undefined,
         })
 
         if (result.success && result.data) {
@@ -258,17 +262,49 @@ export function CreateChallengeModal({ onClose }: Props) {
                                     </label>
                                     <div className="flex gap-2">
                                         {TRACKING_UNITS.map((u) => (
-                                            <button key={u.value} onClick={() => patch({ trackingUnit: u.value })}
+                                            <button key={u.value} onClick={() => { setCustomTotalCells(null); patch({ trackingUnit: u.value }) }}
                                                 className={cn('flex-1 px-3 py-2.5 rounded-xl text-sm font-semibold border transition-all',
-                                                    form.trackingUnit === u.value ? 'bg-violet-600 border-violet-500 text-white' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white')}>
+                                                    form.trackingUnit === u.value && customTotalCells === null
+                                                        ? 'bg-violet-600 border-violet-500 text-white'
+                                                        : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white')}>
                                                 <div>{u.label}</div>
                                                 <div className="text-[10px] opacity-60 mt-0.5">{u.desc}</div>
                                             </button>
                                         ))}
                                     </div>
                                     <p className="text-xs text-zinc-500 mt-2">
-                                        This will create <span className="text-violet-400 font-bold">{totalCells.toLocaleString()} cells</span> in your grid.
+                                        This will create <span className="text-violet-400 font-bold">{autoTotalCells.toLocaleString()} cells</span> in your grid.
                                     </p>
+                                </div>
+                                {/* Custom cells override */}
+                                <div className="bg-zinc-800/60 border border-zinc-700 rounded-xl p-4">
+                                    <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                                        <Grid3x3 size={12} /> Custom Cell Count
+                                        <span className="text-zinc-600 normal-case font-normal ml-1">(optional — overrides auto)</span>
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            max={20000}
+                                            value={customTotalCells ?? ''}
+                                            placeholder={`Auto: ${autoTotalCells.toLocaleString()}`}
+                                            onChange={(e) => {
+                                                const v = parseInt(e.target.value)
+                                                setCustomTotalCells(isNaN(v) || v < 1 ? null : Math.min(v, 20000))
+                                            }}
+                                            className="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 placeholder:text-zinc-600"
+                                        />
+                                        {customTotalCells !== null && (
+                                            <button onClick={() => setCustomTotalCells(null)}
+                                                className="text-xs text-zinc-500 hover:text-white px-2 py-1 rounded-lg border border-zinc-700 hover:border-zinc-500 transition-all">
+                                                Reset
+                                            </button>
+                                        )}
+                                    </div>
+                                    {customTotalCells !== null && (
+                                        <p className="text-xs text-violet-400 mt-1.5 font-medium">✔ Using {customTotalCells.toLocaleString()} custom cells</p>
+                                    )}
                                 </div>
                             </motion.div>
                         )}
@@ -293,19 +329,16 @@ export function CreateChallengeModal({ onClose }: Props) {
                                             </div>
                                         </div>
                                         <div className="flex-1">
-                                            <p className="text-xs text-zinc-500 mb-1.5">Cell size</p>
-                                            <div className="flex gap-1.5">
-                                                {(['xs', 'sm', 'md'] as const).map((s) => (
-                                                    <button key={s} onClick={() => patch({ cellSize: s })}
-                                                        className={cn('flex-1 py-2 rounded-lg text-xs font-semibold border transition-all uppercase',
-                                                            form.cellSize === s ? 'bg-violet-600 border-violet-500 text-white' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white')}>
-                                                        {s}
-                                                    </button>
-                                                ))}
-                                            </div>
+                                            <p className="text-xs text-zinc-500 mb-1.5">Cell size <span className="text-violet-400 font-semibold">{form.cellSize}px</span></p>
+                                            <input
+                                                type="range" min={6} max={36} step={1}
+                                                value={form.cellSize}
+                                                onChange={(e) => patch({ cellSize: parseInt(e.target.value) })}
+                                                className="w-full accent-violet-500"
+                                            />
                                         </div>
                                     </div>
-                                    <GridPreview total={totalCells} shape={form.cellShape} size={form.cellSize} />
+                                    <GridPreview total={totalCells} shape={form.cellShape} sizePx={form.cellSize} />
                                     <p className="text-xs text-zinc-600 mt-2 text-center">
                                         {totalCells.toLocaleString()} cells · Style can be changed later
                                     </p>

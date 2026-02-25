@@ -3,8 +3,8 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-    Target, Plus, Trash2, ArrowRight, Lock, Globe, Clock, Users,
-    Flame, Zap
+    Target, Plus, Trash2, Lock, Globe, Clock, Users,
+    Flame, Zap, ArrowRight
 } from 'lucide-react'
 import { useChallengesStore, Challenge } from '@/stores/challenges'
 import { CreateChallengeModal } from './create-challenge-modal'
@@ -12,6 +12,53 @@ import { ChallengeDetailView } from './challenge-detail-view'
 import { deleteChallenge as deleteChallengeAction } from '@/actions/challenges'
 import { cn } from '@/lib/utils'
 import { format, addDays, parseISO } from 'date-fns'
+import { MovingBorder } from '@/components/ui/moving-border'
+import { Button } from '@/components/ui/button'
+
+// ─── Circular Progress Component ─────────────────────────────────────────────
+
+function CircularProgress({ percent, size = 60, strokeWidth = 5, color = '#8b5cf6' }: {
+    percent: number;
+    size?: number;
+    strokeWidth?: number;
+    color?: string;
+}) {
+    const radius = (size - strokeWidth) / 2
+    const circumference = radius * 2 * Math.PI
+    const offset = circumference - (percent / 100) * circumference
+
+    return (
+        <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+            <svg width={size} height={size} className="rotate-[-90deg]">
+                {/* Background circle */}
+                <circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    stroke="currentColor"
+                    strokeWidth={strokeWidth}
+                    fill="transparent"
+                    className="text-zinc-800"
+                />
+                {/* Progress circle */}
+                <motion.circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    stroke={color}
+                    strokeWidth={strokeWidth}
+                    fill="transparent"
+                    strokeDasharray={circumference}
+                    initial={{ strokeDashoffset: circumference }}
+                    animate={{ strokeDashoffset: offset }}
+                    transition={{ duration: 1, ease: 'easeOut' }}
+                    strokeLinecap="round"
+                />
+            </svg>
+            <span className="absolute text-[10px] font-bold text-white">{percent}%</span>
+        </div>
+    )
+}
 
 // ─── Community challenge templates ───────────────────────────────────────────
 
@@ -89,95 +136,106 @@ function ChallengeCard({ challenge, onView, onDelete }: {
     const completed = challenge.gridCells.filter((c) => c.status === 'completed').length
     const pct = Math.round((completed / challenge.totalCells) * 100)
     const endDate = addDays(parseISO(challenge.startDate), challenge.durationDays - 1)
-    const daysLeft = Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / 86400000))
 
     return (
-        <motion.div
-            layout
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="group relative bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-violet-800/60 transition-all duration-300 hover:shadow-lg hover:shadow-violet-900/20"
+        <div
+            className="group relative overflow-hidden rounded-2xl cursor-pointer p-[1.5px] h-[180px]"
+            onClick={onView}
         >
-            {/* Top row */}
-            <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-bold text-white truncate">{challenge.title}</h3>
-                    {challenge.description && (
-                        <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2">{challenge.description}</p>
-                    )}
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                    {challenge.isPrivate
-                        ? <Lock size={12} className="text-zinc-600" />
-                        : <Globe size={12} className="text-violet-500" />}
-                    {confirmDelete ? (
-                        <div className="flex items-center gap-1 ml-1">
-                            <button onClick={onDelete}
-                                className="px-2 py-0.5 text-[11px] font-bold rounded-md bg-red-950/60 text-red-400 hover:bg-red-900 border border-red-800 transition-colors">
-                                Delete
-                            </button>
-                            <button onClick={() => setConfirmDelete(false)} className="text-zinc-600 hover:text-zinc-400 text-xs">✕</button>
-                        </div>
-                    ) : (
-                        <button
-                            onClick={() => setConfirmDelete(true)}
-                            className="p-1.5 rounded-lg text-zinc-700 hover:text-red-400 hover:bg-red-950/30 transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                            <Trash2 size={13} />
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            {/* Meta badges */}
-            <div className="flex flex-wrap gap-1.5 mb-4">
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-900/30 text-violet-300 border border-violet-800/40 capitalize">
-                    {challenge.trackingUnit}
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-800 text-zinc-400 border border-zinc-700">
-                    {challenge.durationDays}d
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-800 text-zinc-400 border border-zinc-700 flex items-center gap-1">
-                    <Clock size={9} />
-                    {daysLeft > 0 ? `${daysLeft}d left` : 'Completed!'}
-                </span>
-                {challenge.categories.length > 0 && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-800 text-zinc-400 border border-zinc-700">
-                        {challenge.categories.length} categories
-                    </span>
-                )}
-            </div>
-
-            {/* Progress */}
-            <div className="mb-4">
-                <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs text-zinc-500">{completed}/{challenge.totalCells} {challenge.trackingUnit} done</span>
-                    <span className="text-xs font-bold text-violet-400">{pct}%</span>
-                </div>
-                <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                    <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${pct}%` }}
-                        transition={{ duration: 0.8, ease: 'easeOut' }}
-                        className="h-full bg-gradient-to-r from-violet-600 to-violet-400 rounded-full"
+            {/* Moving shimmer border — dual tone, thin streak */}
+            <div className="absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                <MovingBorder duration={3500} rx="1.5rem" ry="1.5rem">
+                    {/* Thin elongated dual-tone shimmer streak */}
+                    <div
+                        className="opacity-90"
+                        style={{
+                            width: '80px',
+                            height: '5px',
+                            background: 'linear-gradient(90deg, #8b5cf6, #38bdf8)',
+                            borderRadius: '9999px',
+                            boxShadow: '0 0 12px 4px #8b5cf680, 0 0 24px 8px #38bdf840',
+                        }}
                     />
-                </div>
+                </MovingBorder>
             </div>
 
-            {/* Footer */}
-            <div className="flex items-center justify-between">
-                <p className="text-[11px] text-zinc-600">
-                    {format(parseISO(challenge.startDate), 'MMM d')} → {format(endDate, 'MMM d, yyyy')}
-                </p>
-                <button
-                    onClick={onView}
-                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold bg-violet-600 hover:bg-violet-500 text-white transition-colors shadow-md shadow-violet-600/30"
-                >
-                    View <ArrowRight size={12} />
-                </button>
+            {/* Card Content Container */}
+            <div className={cn(
+                "relative z-10 w-full h-full bg-zinc-950 rounded-[calc(1rem+0.5px)] p-6 overflow-hidden flex flex-col justify-between",
+                "transition-all duration-300 ease-in-out",
+                "border border-zinc-800/60 group-hover:border-transparent",
+                /* subtle glow on hover via box-shadow */
+                "group-hover:shadow-[0_0_30px_-4px_rgba(139,92,246,0.35),0_0_60px_-12px_rgba(56,189,248,0.2)]"
+            )}>
+                {/* 1. Header: Always Visible */}
+                <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0 pr-4">
+                        <h3 className="text-xl font-bold text-white truncate group-hover:text-violet-100 transition-colors">
+                            {challenge.title}
+                        </h3>
+                    </div>
+                    <CircularProgress percent={pct} size={48} strokeWidth={4} color="#8b5cf6" />
+                </div>
+
+                {/* 2. Middle Content: Reveal on Hover */}
+                <div className="relative flex-1 mt-2 mb-8 pointer-events-none">
+                    {/* Default View: Just the Date at the bottom of the card initially */}
+                    <p className="absolute bottom-0 left-0 text-xs text-zinc-500 transition-all duration-300 group-hover:opacity-0 group-hover:translate-y-2">
+                        Ends {format(endDate, 'MMM d, yyyy')}
+                    </p>
+
+                    {/* Hover View: badges only */}
+                    <div className="opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-2 group-hover:translate-y-0 flex flex-wrap gap-1.5">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-900/30 text-violet-300 border border-violet-800/40 capitalize">
+                            {challenge.trackingUnit}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-800 text-zinc-400 border border-zinc-700">
+                            {challenge.durationDays}d
+                        </span>
+                    </div>
+                </div>
+
+                {/* 3. Actions: Reveal on Hover */}
+                <div className="absolute -bottom-12 left-0 right-0 p-6 pt-2 opacity-0 transition-all duration-500 group-hover:bottom-0 group-hover:opacity-100 flex items-center justify-between bg-gradient-to-t from-zinc-950 via-zinc-950/90 to-transparent">
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                alert("Edit functionality coming soon")
+                            }}
+                            className="h-8 text-[10px] font-bold uppercase tracking-wider border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-400"
+                        >
+                            Edit
+                        </Button>
+                        {confirmDelete ? (
+                            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                <button onClick={onDelete}
+                                    className="px-2 py-1 text-[10px] font-bold rounded-md bg-red-950/60 text-red-400 hover:bg-red-900 border border-red-800 transition-colors">
+                                    Delete
+                                </button>
+                                <button onClick={() => setConfirmDelete(false)} className="text-zinc-600 hover:text-zinc-400 text-xs px-1">✕</button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setConfirmDelete(true) }}
+                                className="p-1.5 rounded-lg text-zinc-700 hover:text-red-400 hover:bg-red-950/30 transition-colors"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        )}
+                    </div>
+
+                    <Button
+                        size="sm"
+                        className="h-8 bg-violet-600 hover:bg-violet-500 text-white text-[10px] font-bold uppercase tracking-wider"
+                    >
+                        Open <ArrowRight size={12} className="ml-1" />
+                    </Button>
+                </div>
             </div>
-        </motion.div>
+        </div>
     )
 }
 
@@ -189,7 +247,13 @@ function CommunityCard({ c, onJoin }: { c: typeof COMMUNITY_CHALLENGES[0]; onJoi
             layout
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-zinc-700 transition-all duration-300"
+            onClick={onJoin}
+            className={cn(
+                'relative bg-zinc-900 border border-zinc-800 rounded-2xl p-5 cursor-pointer',
+                'transition-all duration-300 group',
+                'hover:border-zinc-600 hover:shadow-xl hover:-translate-y-0.5',
+                'active:scale-[0.99]',
+            )}
         >
             {/* Accent top bar */}
             <div className="absolute top-0 left-6 right-6 h-0.5 rounded-b-full" style={{ backgroundColor: c.accent }} />
@@ -221,13 +285,10 @@ function CommunityCard({ c, onJoin }: { c: typeof COMMUNITY_CHALLENGES[0]; onJoi
                 <span className="text-[11px] text-zinc-600 flex items-center gap-1">
                     <Flame size={11} style={{ color: c.accent }} /> Popular challenge
                 </span>
-                <button
-                    onClick={onJoin}
-                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold border text-white transition-all hover:scale-105"
-                    style={{ backgroundColor: c.accent + '33', borderColor: c.accent + '55', color: c.accent }}
-                >
-                    Join <ArrowRight size={12} />
-                </button>
+                <span className="flex items-center gap-1 text-[11px] font-semibold transition-colors group-hover:opacity-100 opacity-70"
+                    style={{ color: c.accent }}>
+                    Join <ArrowRight size={11} />
+                </span>
             </div>
         </motion.div>
     )
@@ -282,7 +343,7 @@ export function ChallengesView({ initialChallenges }: { initialChallenges: Chall
             id: tempId, title: c.title, description: c.description, type: 'community',
             isPrivate: false, startDate: new Date().toISOString().split('T')[0],
             durationDays: c.durationDays, trackingUnit: c.trackingUnit,
-            totalCells: total, cellShape: 'square', cellSize: 'sm',
+            totalCells: total, cellShape: 'square', cellSize: 14, gridColumns: 20,
             gridCells: Array.from({ length: total }, (_, i) => ({ index: i, status: 'empty' as const })),
             categories: [], createdAt: new Date().toISOString(),
         })
@@ -291,7 +352,7 @@ export function ChallengesView({ initialChallenges }: { initialChallenges: Chall
             title: c.title, description: c.description, type: 'community',
             isPrivate: false, startDate: new Date().toISOString().split('T')[0],
             durationDays: c.durationDays, trackingUnit: c.trackingUnit,
-            cellShape: 'square', cellSize: 'sm',
+            cellShape: 'square', cellSize: 14,
         })
         if (result.success && result.data) confirmChallenge(tempId, result.data)
     }

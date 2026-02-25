@@ -21,7 +21,8 @@ export type ChallengeRow = {
     grid_cells: GridCell[]
     categories: Category[]
     cell_shape: 'square' | 'rounded' | 'circle'
-    cell_size: 'xs' | 'sm' | 'md'
+    cell_size: number
+    grid_columns: number
     created_at: string
     updated_at: string
 }
@@ -58,7 +59,8 @@ export type CreateChallengeInput = {
     durationDays: number
     trackingUnit: TrackingUnit
     cellShape: 'square' | 'rounded' | 'circle'
-    cellSize: 'xs' | 'sm' | 'md'
+    cellSize: number          // pixel size
+    totalCells?: number       // optional override; defaults to computeTotalCells()
 }
 
 export async function createChallenge(input: CreateChallengeInput) {
@@ -66,7 +68,7 @@ export async function createChallenge(input: CreateChallengeInput) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Unauthorized' }
 
-    const total = computeTotalCells(input.durationDays, input.trackingUnit)
+    const total = input.totalCells ?? computeTotalCells(input.durationDays, input.trackingUnit)
 
     const { data, error } = await supabase
         .from('challenges')
@@ -115,7 +117,7 @@ export async function deleteChallenge(id: string) {
 
 export async function updateChallengeStyle(
     id: string,
-    patch: { cell_shape?: 'square' | 'rounded' | 'circle'; cell_size?: 'xs' | 'sm' | 'md' }
+    patch: { cell_shape?: 'square' | 'rounded' | 'circle'; cell_size?: number; grid_columns?: number }
 ) {
     const supabase = await createClient()
     const { error } = await supabase

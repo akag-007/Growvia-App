@@ -1,12 +1,12 @@
 "use client";
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 const transition = {
-    type: "spring",
+    type: "spring" as const,
     mass: 0.5,
     damping: 11.5,
     stiffness: 100,
@@ -18,47 +18,49 @@ export const MenuItem = ({
     setActive,
     active,
     item,
-    children,
     element,
+    children,
 }: {
     setActive: (item: string) => void;
     active: string | null;
     item: string;
-    children?: React.ReactNode;
+    /** Optional custom trigger element. If not provided, renders `item` as text. */
     element?: React.ReactNode;
+    children?: React.ReactNode;
 }) => {
     return (
-        <div onMouseEnter={() => setActive(item)} className="relative ">
-            <motion.div
-                transition={{ duration: 0.3 }}
-                className="cursor-pointer text-black hover:opacity-[0.9] dark:text-white"
-            >
-                {element || item}
-            </motion.div>
-            {active !== null && (
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.85, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={transition}
+        <div onMouseEnter={() => setActive(item)} className="relative">
+            {element ? (
+                element
+            ) : (
+                <motion.p
+                    transition={{ duration: 0.3 }}
+                    className="cursor-pointer text-black hover:opacity-[0.9] dark:text-white"
                 >
-                    {active === item && (
-                        <div className="absolute top-[calc(100%_+_1.2rem)] left-1/2 transform -translate-x-1/2 pt-4">
-                            <motion.div
-                                transition={transition}
-                                layoutId="active" // layoutId ensures smooth animation
-                                className="bg-white dark:bg-black backdrop-blur-sm rounded-2xl overflow-hidden border border-black/[0.2] dark:border-white/[0.2] shadow-xl"
-                            >
-                                <motion.div
-                                    layout // layout ensures smooth animation
-                                    className="w-max h-full p-4"
-                                >
-                                    {children}
-                                </motion.div>
-                            </motion.div>
-                        </div>
-                    )}
-                </motion.div>
+                    {item}
+                </motion.p>
             )}
+            <AnimatePresence>
+                {active === item && children && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.85, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.85, y: 10 }}
+                        transition={transition}
+                        className="absolute top-[calc(100%_+_0.8rem)] right-0 pt-2 z-50"
+                    >
+                        <motion.div
+                            transition={transition}
+                            layoutId="active"
+                            className="bg-white dark:bg-zinc-900 backdrop-blur-sm rounded-2xl overflow-visible border border-black/[0.08] dark:border-white/[0.1] shadow-xl"
+                        >
+                            <motion.div layout className="w-max h-full p-4">
+                                {children}
+                            </motion.div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
@@ -70,12 +72,15 @@ export const Menu = ({
 }: {
     setActive: (item: string | null) => void;
     children: React.ReactNode;
-    className?: string; // Add className prop type
+    className?: string;
 }) => {
     return (
         <nav
-            onMouseLeave={() => setActive(null)} // resets the state
-            className={cn("relative rounded-full border border-transparent dark:bg-black dark:border-white/[0.2] bg-white shadow-input flex justify-center space-x-4 px-8 py-6", className)}
+            onMouseLeave={() => setActive(null)}
+            className={cn(
+                "relative rounded-full border border-transparent dark:bg-black dark:border-white/[0.2] bg-white shadow-input flex justify-center space-x-4 px-8 py-6",
+                className
+            )}
         >
             {children}
         </nav>
@@ -118,7 +123,7 @@ export const HoveredLink = ({ children, ...rest }: any) => {
     return (
         <Link
             {...rest}
-            className="text-neutral-700 dark:text-neutral-200 hover:text-black "
+            className="text-neutral-700 dark:text-neutral-200 hover:text-black"
         >
             {children}
         </Link>

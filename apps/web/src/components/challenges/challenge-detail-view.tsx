@@ -1,16 +1,17 @@
-'use client'
+﻿'use client'
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
     ArrowLeft, Settings2, Plus, Pencil, Trash2,
-    CheckCircle2, Circle, BarChart3, Grid3x3,
+    BarChart3, Grid3x3, Tag,
 } from 'lucide-react'
 import { useChallengesStore, Challenge, Category, GridCell } from '@/stores/challenges'
 import { CategoryManagementModal } from './category-management-modal'
 import { toggleGridCell, setCellCategoryDb, syncChallengeData, updateChallengeStyle } from '@/actions/challenges'
 import { cn } from '@/lib/utils'
 import { format, addDays, parseISO } from 'date-fns'
+import { Slider } from '@/components/ui/slider-number-flow'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -34,49 +35,41 @@ function unitLabel(u: Category['unit']) {
     return u === 'minutes' ? 'min' : u === 'hours' ? 'hr' : ''
 }
 
-// ─── Cell Popover ─────────────────────────────────────────────────────────────
+// ─── Category Popover (right-click) ──────────────────────────────────────────
 
-function CellPopover({ cell, challenge, onClose, anchorEl }: {
+function CategoryPopover({ cell, challenge, onClose, anchorEl }: {
     cell: GridCell
     challenge: Challenge
     onClose: () => void
     anchorEl: HTMLElement | null
 }) {
-    const { toggleCell, setCellCategory } = useChallengesStore()
+    const { setCellCategory } = useChallengesStore()
     const ref = useRef<HTMLDivElement>(null)
     const [pos, setPos] = useState({ top: 0, left: 0 })
 
     useEffect(() => {
         if (!anchorEl || !ref.current) return
         const rect = anchorEl.getBoundingClientRect()
-        const pw = ref.current.offsetWidth || 200
-        const ph = ref.current.offsetHeight || 160
+        const pw = ref.current.offsetWidth || 180
+        const ph = ref.current.offsetHeight || 120
         let left = rect.left + rect.width / 2 - pw / 2
-        let top = rect.bottom + 8
-        if (top + ph > window.innerHeight - 8) top = rect.top - ph - 8
+        let top = rect.bottom + 6
+        if (top + ph > window.innerHeight - 8) top = rect.top - ph - 6
         left = Math.max(8, Math.min(left, window.innerWidth - pw - 8))
         setPos({ top, left })
     }, [anchorEl])
 
     useEffect(() => {
         const handler = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node) && anchorEl && !anchorEl.contains(e.target as Node)) {
-                onClose()
-            }
+            if (ref.current && !ref.current.contains(e.target as Node)) onClose()
         }
         document.addEventListener('mousedown', handler)
         return () => document.removeEventListener('mousedown', handler)
-    }, [anchorEl, onClose])
-
-    const handleToggle = () => {
-        const updatedCells = toggleCell(challenge.id, cell.index)
-        toggleGridCell(challenge.id, updatedCells) // fire-and-forget to DB
-        onClose()
-    }
+    }, [onClose])
 
     const handleSetCategory = (catId: string | undefined) => {
         const updatedCells = setCellCategory(challenge.id, cell.index, catId)
-        setCellCategoryDb(challenge.id, updatedCells) // fire-and-forget to DB
+        setCellCategoryDb(challenge.id, updatedCells)
         onClose()
     }
 
@@ -86,55 +79,38 @@ function CellPopover({ cell, challenge, onClose, anchorEl }: {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.12 }}
-            style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999, width: 196 }}
-            className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl p-3 space-y-3"
+            transition={{ duration: 0.1 }}
+            style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999, minWidth: 160 }}
+            className="bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl p-2.5"
         >
-            <p className="text-[11px] font-bold text-zinc-500">{cellLabel(cell, challenge)}</p>
-
-            <button
-                onClick={handleToggle}
-                className={cn(
-                    'w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all',
-                    cell.status === 'completed'
-                        ? 'bg-zinc-800 text-zinc-400 hover:bg-red-950 hover:text-red-400'
-                        : 'bg-violet-600/20 text-violet-300 hover:bg-violet-600 hover:text-white'
-                )}
-            >
-                {cell.status === 'completed'
-                    ? <><Circle size={14} /> Mark empty</>
-                    : <><CheckCircle2 size={14} /> Mark done</>}
-            </button>
-
-            {challenge.categories.length > 0 && (
-                <div>
-                    <p className="text-[10px] text-zinc-600 uppercase font-bold tracking-wider mb-1.5">Category</p>
-                    <div className="flex flex-wrap gap-1.5">
-                        <button
-                            onClick={() => handleSetCategory(undefined)}
-                            className={cn(
-                                'px-2 py-1 rounded-lg text-[11px] font-semibold border transition-all',
-                                !cell.categoryId ? 'bg-zinc-700 border-zinc-600 text-white' : 'border-zinc-700 text-zinc-500 hover:text-white'
-                            )}
-                        >
-                            None
-                        </button>
-                        {challenge.categories.map((c) => (
-                            <button
-                                key={c.id}
-                                onClick={() => handleSetCategory(c.id)}
-                                className={cn(
-                                    'px-2 py-1 rounded-lg text-[11px] font-semibold border transition-all',
-                                    cell.categoryId === c.id ? 'border-white/30 text-white' : 'border-transparent text-white hover:border-white/20'
-                                )}
-                                style={{ backgroundColor: c.color + '33', borderColor: cell.categoryId === c.id ? c.color : undefined }}
-                            >
-                                {c.name}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
+            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2 px-1">
+                <Tag size={9} className="inline mr-1" />{cellLabel(cell, challenge)}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+                <button
+                    onClick={() => handleSetCategory(undefined)}
+                    className={cn(
+                        'px-2 py-1 rounded-lg text-[11px] font-semibold border transition-all',
+                        !cell.categoryId ? 'bg-zinc-700 border-zinc-600 text-white' : 'border-zinc-700 text-zinc-500 hover:text-white'
+                    )}
+                >
+                    None
+                </button>
+                {challenge.categories.map((c) => (
+                    <button
+                        key={c.id}
+                        onClick={() => handleSetCategory(c.id)}
+                        className="px-2 py-1 rounded-lg text-[11px] font-semibold border transition-all text-white"
+                        style={{
+                            backgroundColor: c.color + '33',
+                            borderColor: cell.categoryId === c.id ? c.color : 'transparent',
+                            outline: cell.categoryId === c.id ? `1px solid ${c.color}` : undefined,
+                        }}
+                    >
+                        {c.name}
+                    </button>
+                ))}
+            </div>
         </motion.div>
     )
 }
@@ -142,9 +118,16 @@ function CellPopover({ cell, challenge, onClose, anchorEl }: {
 // ─── Grid Tab ─────────────────────────────────────────────────────────────────
 
 function GridTab({ challenge }: { challenge: Challenge }) {
-    const { updateChallengeStyle: updateStyle } = useChallengesStore()
-    const [activeCell, setActiveCell] = useState<{ cell: GridCell; el: HTMLElement } | null>(null)
-    const [showStyle, setShowStyle] = useState(false)
+    const { updateChallengeStyle: updateStyle, setCellsRange } = useChallengesStore()
+    const [catPopover, setCatPopover] = useState<{ cell: GridCell; el: HTMLElement } | null>(null)
+    const [gridStyleHover, setGridStyleHover] = useState(false)
+
+    // Drag-to-select state
+    const [dragStartIdx, setDragStartIdx] = useState<number | null>(null)
+    const [dragEndIdx, setDragEndIdx] = useState<number | null>(null)
+    // 'completed' = dragging to fill, 'empty' = dragging to clear
+    const dragTargetStatus = useRef<'completed' | 'empty'>('completed')
+    const isDragging = useRef(false)
 
     const completed = challenge.gridCells.filter((c) => c.status === 'completed').length
     const total = challenge.totalCells
@@ -153,22 +136,75 @@ function GridTab({ challenge }: { challenge: Challenge }) {
     const daysLeft = Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / 86400000))
 
     const shapeClass = challenge.cellShape === 'circle' ? 'rounded-full' : challenge.cellShape === 'rounded' ? 'rounded-md' : 'rounded-sm'
-    const sizeClass = challenge.cellSize === 'xs' ? 'w-2.5 h-2.5' : challenge.cellSize === 'sm' ? 'w-3.5 h-3.5' : 'w-5 h-5'
+    const cellPx = challenge.cellSize           // integer px from store
+    const cols = challenge.gridColumns
+    const rowCount = Math.ceil(total / cols)
+    const styleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-    const handleCellClick = useCallback((e: React.MouseEvent<HTMLButtonElement>, cell: GridCell) => {
-        e.stopPropagation()
-        setActiveCell((prev) => prev?.cell.index === cell.index ? null : { cell, el: e.currentTarget })
-    }, [])
+    // Compute highlighted range indices during drag
+    const dragRange = (dragStartIdx !== null && dragEndIdx !== null)
+        ? { lo: Math.min(dragStartIdx, dragEndIdx), hi: Math.max(dragStartIdx, dragEndIdx) }
+        : null
 
-    const handleStyleChange = (updates: { cellShape?: Challenge['cellShape']; cellSize?: Challenge['cellSize'] }) => {
+    // Commit the range to the store + DB on mouseup
+    const commitDrag = useCallback(() => {
+        if (!isDragging.current || dragStartIdx === null) return
+        const end = dragEndIdx ?? dragStartIdx
+        const lo = Math.min(dragStartIdx, end)
+        const hi = Math.max(dragStartIdx, end)
+        const target = dragTargetStatus.current
+        const updatedCells = setCellsRange(challenge.id, lo, hi, target)
+        toggleGridCell(challenge.id, updatedCells)
+        isDragging.current = false
+        setDragStartIdx(null)
+        setDragEndIdx(null)
+    }, [challenge.id, dragStartIdx, dragEndIdx, setCellsRange])
+
+    // Listen for mouseup anywhere so releasing outside the grid commits correctly
+    useEffect(() => {
+        const handler = () => { if (isDragging.current) commitDrag() }
+        document.addEventListener('mouseup', handler)
+        return () => document.removeEventListener('mouseup', handler)
+    }, [commitDrag])
+
+
+
+    const handleCellMouseDown = (e: React.MouseEvent, cell: GridCell) => {
+        if (e.button !== 0) return // left button only
+        e.preventDefault() // prevent text-selection cursor during drag
+        isDragging.current = true
+        setDragStartIdx(cell.index)
+        setDragEndIdx(cell.index)
+        // Intent: if cell is empty → fill; if completed → clear
+        dragTargetStatus.current = cell.status === 'completed' ? 'empty' : 'completed'
+    }
+
+    const handleCellMouseEnter = (cell: GridCell) => {
+        if (!isDragging.current) return
+        setDragEndIdx(cell.index)
+    }
+
+    // Right-click: category picker
+    const handleCellContextMenu = (e: React.MouseEvent<HTMLButtonElement>, cell: GridCell) => {
+        if (challenge.categories.length === 0) return
+        e.preventDefault()
+        setCatPopover({ cell, el: e.currentTarget })
+    }
+
+    // Instant store update; debounced DB write so sliders don't spam the API
+    const handleStyleChange = (updates: Partial<Pick<Challenge, 'cellShape' | 'cellSize' | 'gridColumns'>>) => {
         updateStyle(challenge.id, updates)
-        updateChallengeStyle(challenge.id, {
+        const patch = {
             cell_shape: updates.cellShape ?? challenge.cellShape,
             cell_size: updates.cellSize ?? challenge.cellSize,
-        })
+            grid_columns: updates.gridColumns ?? challenge.gridColumns,
+        }
+        if (styleDebounceRef.current) clearTimeout(styleDebounceRef.current)
+        styleDebounceRef.current = setTimeout(() => updateChallengeStyle(challenge.id, patch), 600)
     }
 
     const cat = (id?: string) => id ? challenge.categories.find((c) => c.id === id) : undefined
+
 
     return (
         <div>
@@ -197,82 +233,154 @@ function GridTab({ challenge }: { challenge: Challenge }) {
                 />
             </div>
 
-            {/* Grid style toggle */}
-            <div className="flex items-center justify-between mb-3">
-                <p className="text-xs text-zinc-500">Click a cell to mark it done · Hover for date label</p>
-                <button
-                    onClick={() => setShowStyle((v) => !v)}
-                    className={cn(
-                        'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all',
-                        showStyle ? 'bg-violet-600 border-violet-500 text-white' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'
-                    )}
-                >
-                    <Settings2 size={12} /> Grid Style
-                </button>
-            </div>
+            {/* Grid style toggle — hover dropdown */}
+            <div className="mb-3">
+                <div className="flex items-center justify-between">
+                    <p className="text-xs text-zinc-500">
+                        Click or drag to toggle ·{' '}
+                        {challenge.categories.length > 0 ? 'Right-click to assign category' : 'Add categories to colour-code cells'}
+                    </p>
 
-            <AnimatePresence>
-                {showStyle && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
+                    {/* Hover-activated dropdown button */}
+                    <div
+                        className="relative"
+                        onMouseEnter={() => setGridStyleHover(true)}
+                        onMouseLeave={() => setGridStyleHover(false)}
                     >
-                        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 mb-4 flex gap-6">
-                            <div>
-                                <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-2">Shape</p>
-                                <div className="flex gap-1.5">
-                                    {(['square', 'rounded', 'circle'] as const).map((s) => (
-                                        <button key={s} onClick={() => handleStyleChange({ cellShape: s })}
-                                            className={cn('px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all capitalize',
-                                                challenge.cellShape === s ? 'bg-violet-600 border-violet-500 text-white' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white')}>
-                                            {s}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            <div>
-                                <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-2">Size</p>
-                                <div className="flex gap-1.5">
-                                    {(['xs', 'sm', 'md'] as const).map((s) => (
-                                        <button key={s} onClick={() => handleStyleChange({ cellSize: s })}
-                                            className={cn('px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all uppercase',
-                                                challenge.cellSize === s ? 'bg-violet-600 border-violet-500 text-white' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white')}>
-                                            {s}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                        <button
+                            className={cn(
+                                'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all',
+                                gridStyleHover
+                                    ? 'bg-violet-600 border-violet-500 text-white'
+                                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'
+                            )}
+                        >
+                            <Settings2 size={12} /> Grid Style
+                        </button>
 
-            {/* Grid */}
-            <div className="relative" onClick={() => setActiveCell(null)}>
-                <div className="flex flex-wrap gap-0.5 bg-zinc-950 border border-zinc-800 rounded-2xl p-4 max-h-[500px] overflow-y-auto scrollbar-thin">
-                    {challenge.gridCells.map((cell) => {
-                        const category = cat(cell.categoryId)
-                        const isActive = activeCell?.cell.index === cell.index
-                        return (
-                            <button
-                                key={cell.index}
-                                title={cellLabel(cell, challenge)}
-                                onClick={(e) => handleCellClick(e, cell)}
-                                className={cn(
-                                    'flex-shrink-0 border transition-all duration-150',
-                                    sizeClass, shapeClass,
-                                    isActive && 'ring-2 ring-white/60 ring-offset-1 ring-offset-zinc-950',
-                                    cell.status !== 'completed' && 'bg-zinc-800 border-zinc-700/50 hover:bg-zinc-700',
-                                )}
-                                style={cell.status === 'completed' ? {
-                                    backgroundColor: category ? category.color : '#8b5cf6',
-                                    borderColor: 'transparent',
-                                } : undefined}
-                            />
-                        )
-                    })}
+                        {/* Floating dropdown panel */}
+                        <AnimatePresence>
+                            {gridStyleHover && (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.92, y: 8 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.92, y: 8 }}
+                                    transition={{
+                                        type: 'spring',
+                                        mass: 0.5,
+                                        damping: 11.5,
+                                        stiffness: 100,
+                                        restDelta: 0.001,
+                                        restSpeed: 0.001,
+                                    }}
+                                    className="absolute right-0 top-[calc(100%+0.6rem)] z-50 w-80"
+                                >
+                                    <div className="bg-zinc-900 border border-zinc-700/60 rounded-2xl p-5 shadow-2xl shadow-black/50 space-y-5">
+                                        {/* Shape */}
+                                        <div>
+                                            <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-2">Shape</p>
+                                            <div className="flex gap-1.5">
+                                                {(['square', 'rounded', 'circle'] as const).map((s) => (
+                                                    <button key={s} onClick={() => handleStyleChange({ cellShape: s })}
+                                                        className={cn('px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all capitalize',
+                                                            challenge.cellShape === s
+                                                                ? 'bg-violet-600 border-violet-500 text-white'
+                                                                : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white')}>
+                                                        {s}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Cell Size */}
+                                        <div>
+                                            <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-3">Cell Size</p>
+                                            <Slider
+                                                value={[cellPx]}
+                                                min={6} max={36} step={1}
+                                                onValueChange={([v]) => handleStyleChange({ cellSize: v })}
+                                                className="w-full"
+                                            />
+                                        </div>
+
+                                        {/* Columns */}
+                                        <div>
+                                            <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-3">Columns</p>
+                                            <Slider
+                                                value={[cols]}
+                                                min={5} max={32} step={1}
+                                                onValueChange={([v]) => handleStyleChange({ gridColumns: v })}
+                                                className="w-full"
+                                            />
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
+            </div>{/* end grid style */}
+
+            {/* Grid — auto-sizes to cols × cellPx, centered */}
+            <div className="relative">
+                <div
+                    className="mx-auto bg-zinc-950 border border-zinc-800 rounded-2xl p-4 overflow-y-auto scrollbar-thin select-none"
+                    style={{ maxHeight: 520, width: 'fit-content', maxWidth: '100%' }}
+                    onDragStart={(e) => e.preventDefault()}
+                >
+                    <div
+                        className="grid"
+                        style={{ gridTemplateColumns: `repeat(${cols}, ${cellPx}px)`, gap: 2 }}
+                    >
+                        {challenge.gridCells.map((cell) => {
+                            const category = cat(cell.categoryId)
+                            const inDragRange = dragRange && cell.index >= dragRange.lo && cell.index <= dragRange.hi
+                            const willFill = inDragRange && dragTargetStatus.current === 'completed'
+                            const willClear = inDragRange && dragTargetStatus.current === 'empty'
+
+                            return (
+                                <button
+                                    key={cell.index}
+                                    title={cellLabel(cell, challenge)}
+                                    onMouseDown={(e) => handleCellMouseDown(e, cell)}
+                                    onMouseEnter={() => handleCellMouseEnter(cell)}
+                                    onContextMenu={(e) => handleCellContextMenu(e, cell)}
+                                    className={cn(
+                                        'flex-shrink-0 border-0 transition-colors duration-75',
+                                        shapeClass,
+                                        !inDragRange && cell.status !== 'completed' && 'bg-zinc-800 hover:bg-zinc-600',
+                                        willFill && 'ring-1 ring-white/40',
+                                        willClear && 'opacity-30',
+                                    )}
+                                    style={{
+                                        width: cellPx,
+                                        height: cellPx,
+                                        ...(() => {
+                                            if (willFill) return { backgroundColor: '#8b5cf6' }
+                                            if (willClear) return { backgroundColor: category?.color ?? '#8b5cf6' }
+                                            if (cell.status === 'completed') return { backgroundColor: category?.color ?? '#8b5cf6' }
+                                            return {}
+                                        })()
+                                    }}
+                                />
+                            )
+                        })}
+                    </div>{/* end CSS grid */}
+                </div>{/* end scroll container */}
+
+                {/* Drag count badge */}
+                <AnimatePresence>
+                    {dragRange && dragRange.hi > dragRange.lo && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            className="absolute top-2 right-2 px-2.5 py-1 rounded-lg text-xs font-bold bg-violet-600 text-white shadow-lg pointer-events-none"
+                        >
+                            {dragRange.hi - dragRange.lo + 1} selected
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* Category legend */}
                 {challenge.categories.length > 0 && (
@@ -296,16 +404,16 @@ function GridTab({ challenge }: { challenge: Challenge }) {
                         </div>
                     </div>
                 )}
-            </div>
+            </div>{/* End relative */}
 
             <AnimatePresence>
-                {activeCell && (
-                    <CellPopover
-                        key={activeCell.cell.index}
-                        cell={activeCell.cell}
+                {catPopover && (
+                    <CategoryPopover
+                        key={catPopover.cell.index}
+                        cell={catPopover.cell}
                         challenge={challenge}
-                        anchorEl={activeCell.el}
-                        onClose={() => setActiveCell(null)}
+                        anchorEl={catPopover.el}
+                        onClose={() => setCatPopover(null)}
                     />
                 )}
             </AnimatePresence>
@@ -314,6 +422,8 @@ function GridTab({ challenge }: { challenge: Challenge }) {
 }
 
 // ─── Categories Tab ───────────────────────────────────────────────────────────
+
+
 
 function CategoriesTab({ challenge }: { challenge: Challenge }) {
     const { logCategoryEntry, deleteCategory } = useChallengesStore()
