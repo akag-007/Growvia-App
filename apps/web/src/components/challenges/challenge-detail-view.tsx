@@ -551,11 +551,11 @@ export function ChallengeDetailView({ challengeId, onBack }: { challengeId: stri
 
     return (
         <motion.div initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}>
-            {/* 2-col grid: [title+timeline stacked] | [ring centred] */}
-            <div className="grid grid-cols-[1fr_auto] items-start gap-x-8 mb-6">
+            {/* Header area — relative so the ring can be positioned absolutely */}
+            <div className="relative mb-6">
 
-                {/* LEFT TOP: title row */}
-                <div className="flex items-center gap-4">
+                {/* Title row */}
+                <div className="flex items-center gap-4 pr-36">
                     <button onClick={onBack} className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-900 border border-zinc-800 transition-colors">
                         <ArrowLeft size={18} />
                     </button>
@@ -578,8 +578,8 @@ export function ChallengeDetailView({ challengeId, onBack }: { challengeId: stri
                     </div>
                 </div>
 
-                {/* RIGHT: ring — top-right, aligned with title */}
-                <div className="flex flex-col items-center gap-2">
+                {/* Ring — absolutely positioned top-right */}
+                <div className="absolute top-0 right-0 flex flex-col items-center gap-2">
                     <div className="relative w-24 h-24">
                         <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
                             <circle cx="32" cy="32" r="26" fill="none" stroke="#27272a" strokeWidth="5" />
@@ -614,8 +614,8 @@ export function ChallengeDetailView({ challengeId, onBack }: { challengeId: stri
                     </div>
                 </div>
 
-                {/* BOTTOM: timeline — spans full width, centres itself */}
-                <div className="col-span-2 flex items-center gap-0 px-2 mt-4 w-full max-w-3xl mx-auto">
+                {/* Timeline — centred below title */}
+                <div className="flex items-center gap-0 px-2 my-[44px] w-full max-w-xl mx-auto">
                     {/* Start date */}
                     <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
                         <div className="w-9 h-9 rounded-full border-2 border-emerald-500 bg-emerald-500/10 flex items-center justify-center">
