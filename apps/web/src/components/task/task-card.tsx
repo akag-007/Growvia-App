@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, ChevronUp, Clock, Trash2, Play } from 'lucide-react'
 import { useTimerStore } from '@/stores/timer'
+import { PRIORITY_META, PriorityValue } from '@app/shared'
 
 import { TimerSetupModal } from '@/components/timer/timer-setup-modal'
 
@@ -52,17 +53,30 @@ export function TaskCard({ task }: { task: any }) {
                                 }`}>
                                 {task.title}
                             </h3>
-                            {task.categories && (
-                                <span
-                                    className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-                                    style={{
-                                        backgroundColor: `${task.categories.color}20`,
-                                        color: task.categories.color
-                                    }}
-                                >
-                                    {task.categories.name}
-                                </span>
-                            )}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                                {task.priority && PRIORITY_META[task.priority as PriorityValue] && (
+                                    <span
+                                        className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold"
+                                        style={{
+                                            backgroundColor: PRIORITY_META[task.priority as PriorityValue].bg,
+                                            color: PRIORITY_META[task.priority as PriorityValue].color,
+                                        }}
+                                    >
+                                        {PRIORITY_META[task.priority as PriorityValue].sublabel}
+                                    </span>
+                                )}
+                                {task.categories && (
+                                    <span
+                                        className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                                        style={{
+                                            backgroundColor: `${task.categories.color}20`,
+                                            color: task.categories.color
+                                        }}
+                                    >
+                                        {task.categories.name}
+                                    </span>
+                                )}
+                            </div>
                         </div>
 
                         {!isExpanded && task.estimated_duration && (

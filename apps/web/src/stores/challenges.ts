@@ -246,14 +246,12 @@ export const useChallengesStore = create<ChallengesState>((set, get) => ({
         return { categories: updatedCats, gridCells: updatedCells }
     },
 
-    logCategoryEntry: (challengeId, categoryId, amount) => {
+    logCategoryEntry: (challengeId, _categoryId, _amount) => {
         let updatedCats: Category[] = []
         set((s) => ({
             challenges: s.challenges.map((c) => {
                 if (c.id !== challengeId) return c
-                const cats = c.categories.map((cat) =>
-                    cat.id === categoryId ? { ...cat, totalLogged: cat.totalLogged + amount } : cat
-                )
+                const cats = c.categories
                 updatedCats = cats
                 return { ...c, categories: cats }
             }),

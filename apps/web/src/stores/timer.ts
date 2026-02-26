@@ -34,13 +34,13 @@ export const useTimerStore = create<TimerState>()(
             targetDuration: null,
             isRunning: false,
 
-            startNewSession: (taskId, title, mode, initialDbDuration, targetDuration = null) => {
+            startNewSession: (taskId, title, mode, initialDbDuration, targetDuration = undefined) => {
                 set({
                     activeTaskId: taskId,
                     activeTaskTitle: title,
                     mode,
-                    initialDbDuration, // Snapshot of DB state
-                    targetDuration,
+                    initialDbDuration,
+                    targetDuration: targetDuration ?? null,
                     startTime: Date.now(),
                     sessionElapsed: 0,
                     isRunning: true,

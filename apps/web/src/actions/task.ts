@@ -65,6 +65,7 @@ export async function createTask(formData: FormData) {
     const description = formData.get('description') as string
     const estimated_duration = formData.get('estimated_duration') ? parseInt(formData.get('estimated_duration') as string) : undefined
     const due_date = formData.get('due_date') as string || new Date().toISOString().split('T')[0]
+    const priority = (formData.get('priority') as string) || null
 
     // Category handling
     let category_id = formData.get('category_id') as string
@@ -105,16 +106,8 @@ export async function createTask(formData: FormData) {
         estimated_duration,
         category_id: category_id || null,
         due_date,
+        priority: priority || null,
     }
-
-    // We construct the input object to match the schema structure
-    // The schema expects `new_category` object, but here we handled it manually above 
-    // to get the ID. So we just validate the task part.
-
-    // A slight adjustment to how we use the schema:
-    // We can't strictly use `createTaskSchema` for the *final* DB insert because
-    // the schema includes the `new_category` nested object which isn't in the DB table.
-    // But we can use it to validate the inputs *before* we split logic.
 
     const { error } = await supabase
         .from('tasks')

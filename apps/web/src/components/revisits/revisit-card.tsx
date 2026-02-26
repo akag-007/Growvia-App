@@ -55,13 +55,14 @@ export function RevisitCard({ revisit }: RevisitCardProps) {
         await deleteRevisit(revisit.id)
     }
 
-    const typeColors = {
+    const typeColors: Record<string, string> = {
         tech: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
         leetcode: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
         math: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
         college: 'bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300',
         book: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
         misc: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-400',
+        custom: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
     }
 
     return (
