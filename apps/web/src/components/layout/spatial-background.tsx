@@ -11,6 +11,7 @@ const ROUTE_BACKGROUNDS: Record<string, string[]> = {
     gamification: ['bg1 -gamification.jpg'],
     challenges: ['bg2-challenges.jpg'],
     revisits: ['bg1-revisits.jpg', 'bg2-revisits.jpg'],
+    notes: ['bg3-dashboard.jpg'],
     // fallback for any other route
     default: ['bg1-dashboard.jpg', 'bg3-dashboard.jpg'],
 }
@@ -18,14 +19,14 @@ const ROUTE_BACKGROUNDS: Record<string, string[]> = {
 function getDeterministicBackground(pathname: string, arr: string[]): string {
     let hash = 0;
     for (let i = 0; i < pathname.length; i++) {
-        hash = pathname.charCodeAt(i) + ((hash << 5) - hash);
+        hash = pathname.charCodeAt(i) + ((hash <<  5) - hash);
     }
     return arr[Math.abs(hash) % arr.length];
 }
 
 function getBackground(pathname: string): string {
     const segments = pathname.split('/').filter(Boolean)
-    // e.g. /dashboard/challenges → prefer the most specific segment (do not mutate `segments`)
+    // e.g. /dashboard/challenges → prefer to most specific segment (do not mutate `segments`)
     for (const seg of [...segments].reverse()) {
         if (ROUTE_BACKGROUNDS[seg]) {
             return getDeterministicBackground(pathname, ROUTE_BACKGROUNDS[seg])
@@ -44,7 +45,7 @@ export function SpatialBackground() {
 
     const markLoaded = useCallback(() => setLoaded(true), [])
 
-    // Reset when the route image changes, then handle cache: `onLoad` often never fires if the
+    // Reset when route image changes, then handle cache: `onLoad` often never fires if the
     // bitmap was ready before React attached the handler (common on full reload of /dashboard).
     useLayoutEffect(() => {
         setLoaded(false)
@@ -78,28 +79,28 @@ export function SpatialBackground() {
                     height: '110%',
                     objectFit: 'cover',
                     objectPosition: 'center',
-                    filter: 'blur(14px) brightness(0.7)',
+                    filter: 'blur(10px) brightness(0.85)',
                     transform: 'scale(1.05)',
                     transition: 'opacity 0.45s ease',
                     opacity: loaded ? 1 : 0,
                 }}
             />
 
-            {/* Dark overlay to normalise brightness and ensure glass readability */}
+            {/* Light overlay for glassmorphic effect - reduced opacity for more transparency */}
             <div
                 style={{
                     position: 'absolute',
                     inset: 0,
-                    background: 'linear-gradient(135deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.30) 100%)',
+                    background: 'linear-gradient(135deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.08) 100%)',
                 }}
             />
 
-            {/* Subtle vignette at the edges */}
+            {/* Very subtle vignette at edges - reduced for glassmorphic transparency */}
             <div
                 style={{
                     position: 'absolute',
                     inset: 0,
-                    background: 'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.50) 100%)',
+                    background: 'radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.20) 100%)',
                 }}
             />
         </div>

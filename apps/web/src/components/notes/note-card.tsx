@@ -7,13 +7,13 @@ import { cn } from '@/lib/utils'
 import type { Note } from '@/actions/notes'
 
 const NOTE_COLORS: Record<string, { bg: string; border: string; dot: string }> = {
-    red: { bg: 'bg-red-50 dark:bg-red-950/20', border: 'border-l-red-400', dot: 'bg-red-400' },
-    orange: { bg: 'bg-orange-50 dark:bg-orange-950/20', border: 'border-l-orange-400', dot: 'bg-orange-400' },
-    yellow: { bg: 'bg-yellow-50 dark:bg-yellow-950/20', border: 'border-l-yellow-400', dot: 'bg-yellow-400' },
-    green: { bg: 'bg-emerald-50 dark:bg-emerald-950/20', border: 'border-l-emerald-400', dot: 'bg-emerald-400' },
-    blue: { bg: 'bg-blue-50 dark:bg-blue-950/20', border: 'border-l-blue-400', dot: 'bg-blue-400' },
-    purple: { bg: 'bg-purple-50 dark:bg-purple-950/20', border: 'border-l-purple-400', dot: 'bg-purple-400' },
-    pink: { bg: 'bg-pink-50 dark:bg-pink-950/20', border: 'border-l-pink-400', dot: 'bg-pink-400' },
+    red: { bg: 'bg-red-500/10 backdrop-blur-md', border: 'border-red-400/30', dot: 'bg-red-400' },
+    orange: { bg: 'bg-orange-500/10 backdrop-blur-md', border: 'border-orange-400/30', dot: 'bg-orange-400' },
+    yellow: { bg: 'bg-yellow-500/10 backdrop-blur-md', border: 'border-yellow-400/30', dot: 'bg-yellow-400' },
+    green: { bg: 'bg-emerald-500/10 backdrop-blur-md', border: 'border-emerald-400/30', dot: 'bg-emerald-400' },
+    blue: { bg: 'bg-blue-500/10 backdrop-blur-md', border: 'border-blue-400/30', dot: 'bg-blue-400' },
+    purple: { bg: 'bg-purple-500/10 backdrop-blur-md', border: 'border-purple-400/30', dot: 'bg-purple-400' },
+    pink: { bg: 'bg-pink-500/10 backdrop-blur-md', border: 'border-pink-400/30', dot: 'bg-pink-400' },
 }
 
 interface NoteCardProps {
@@ -36,14 +36,14 @@ export function NoteCard({ note, isActive, onClick, index }: NoteCardProps) {
             transition={{ duration: 0.25, delay: index * 0.03 }}
             onClick={onClick}
             className={cn(
-                'group relative cursor-pointer rounded-xl border-l-[3px] p-3.5 transition-all duration-200',
-                'hover:shadow-md hover:scale-[1.01]',
+                'group relative cursor-pointer p-3.5 transition-all duration-200',
+                'hover:shadow-xl hover:scale-[1.02] hover:border-white/20',
                 isActive
-                    ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500 shadow-sm ring-1 ring-emerald-200 dark:ring-emerald-800'
+                    ? 'bg-black/50 backdrop-blur-md border-emerald-400/50 shadow-lg ring-1 ring-emerald-400/30'
                     : colorStyle
-                        ? `${colorStyle.bg} ${colorStyle.border}`
-                        : 'bg-white dark:bg-zinc-900/60 border-l-zinc-200 dark:border-l-zinc-700 hover:border-l-emerald-400',
-                'border border-l-[3px] border-zinc-100 dark:border-zinc-800/50'
+                        ? `${colorStyle.bg} backdrop-blur-md border shadow-lg`
+                        : 'bg-black/40 backdrop-blur-md border-white/10 shadow-lg',
+                'border-l-[3px] border-white/10 rounded-2xl'
             )}
         >
             {/* Header row */}

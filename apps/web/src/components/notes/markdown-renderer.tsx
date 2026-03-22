@@ -12,8 +12,11 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
 
     return (
         <div
-            className={`markdown-rendered prose prose-zinc dark:prose-invert max-w-none ${className}`}
+            className={`markdown-rendered prose prose-invert prose-emerald max-w-none ${className}`}
             dangerouslySetInnerHTML={{ __html: html }}
+            style={{
+                color: 'rgba(255, 255, 255, 0.85)',
+            }}
         />
     )
 }

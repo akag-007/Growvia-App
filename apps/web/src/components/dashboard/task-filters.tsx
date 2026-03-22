@@ -33,8 +33,9 @@ export function TaskFilters({
                 style={{
                     background: selectedCategory === null
                         ? 'linear-gradient(135deg, #f97316, #ea580c)'
-                        : 'rgba(255,255,255,0.05)',
-                    color: selectedCategory === null ? '#fff' : '#9ca3af',
+                        : 'rgba(0,0,0,0.35)',
+                    color: selectedCategory === null ? '#fff' : '#d1d5db',
+                    border: '1px solid rgba(255,255,255,0.10)',
                 }}
             >
                 All Tasks
@@ -47,11 +48,12 @@ export function TaskFilters({
                     className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 hover:scale-105"
                     style={{
                         background: selectedCategory === category.name
-                            ? `${category.color}20`
-                            : 'rgba(255,255,255,0.05)',
+                            ? `${category.color}30`
+                            : 'rgba(0,0,0,0.35)',
                         color: selectedCategory === category.name
                             ? category.color
-                            : '#9ca3af',
+                            : '#d1d5db',
+                        border: '1px solid rgba(255,255,255,0.10)',
                     }}
                 >
                     {category.name}

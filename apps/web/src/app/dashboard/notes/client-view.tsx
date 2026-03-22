@@ -2,12 +2,13 @@
 
 import React, { useEffect, useCallback, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { cn } from '@/lib/utils'
 import { useNotesStore } from '@/stores/notes'
-import { NotesSidebar } from '@/components/notes/notes-sidebar'
+import { SpatialGrid } from '@/components/notes/spatial-grid'
+import { NoteSidebarBar } from '@/components/notes/note-sidebar-bar'
 import { NoteEditor } from '@/components/notes/note-editor'
 import { EmptyState } from '@/components/notes/empty-state'
 import { createNote } from '@/actions/notes'
-import { FileText } from 'lucide-react'
 import type { Note } from '@/actions/notes'
 
 interface NotesClientViewProps {
@@ -24,7 +25,7 @@ export default function NotesClientView({ initialNotes }: NotesClientViewProps) 
         addNote,
     } = useNotesStore()
 
-    const [mobileShowEditor, setMobileShowEditor] = useState(false)
+    const [isEditorMode, setIsEditorMode] = useState(false)
 
     // Initialize store with server data
     useEffect(() => {
@@ -32,11 +33,18 @@ export default function NotesClientView({ initialNotes }: NotesClientViewProps) 
     }, [initialNotes, setNotes])
 
     const activeNote = getActiveNote()
+    const sortedNotes = [...notes].sort((a, b) => {
+        if (a.is_pinned && !b.is_pinned) return -1
+        if (!a.is_pinned && b.is_pinned) return 1
+        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    })
 
-    // When activeNote is set on mobile, show editor
+    // When activeNoteId changes, update editor mode
     useEffect(() => {
         if (activeNoteId) {
-            setMobileShowEditor(true)
+            setIsEditorMode(true)
+        } else {
+            setIsEditorMode(false)
         }
     }, [activeNoteId])
 
@@ -44,79 +52,84 @@ export default function NotesClientView({ initialNotes }: NotesClientViewProps) 
         const result = await createNote()
         if (result.data) {
             addNote(result.data as Note)
-            setMobileShowEditor(true)
+            setActiveNoteId(result.data.id)
         }
-    }, [addNote])
+    }, [addNote, setActiveNoteId])
 
-    const handleMobileBack = useCallback(() => {
-        setMobileShowEditor(false)
+    const handleNoteClick = useCallback((noteId: string) => {
+        setActiveNoteId(noteId)
+    }, [setActiveNoteId])
+
+    const handleBackToGrid = useCallback(() => {
         setActiveNoteId(null)
     }, [setActiveNoteId])
 
-    // Global keyboard shortcut: Ctrl+N to create note
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
-                e.preventDefault()
-                handleCreateNote()
-            }
-        }
-        window.addEventListener('keydown', handleKeyDown)
-        return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [handleCreateNote])
-
-    const hasNotes = notes.length > 0
+    const handleNoteChange = useCallback((newNote: Note) => {
+        // Note updates are handled in the NoteEditor component via the store
+    }, [])
 
     return (
-        <div className="flex h-[calc(100vh-4rem)] -m-6 lg:-m-10 overflow-hidden">
-            {/* Sidebar - always visible on desktop, hidden on mobile when editor is shown */}
-            <div className={`
-                w-full lg:w-[320px] xl:w-[340px] flex-shrink-0 h-full
-                ${mobileShowEditor ? 'hidden lg:flex' : 'flex'}
-            `}>
-                <NotesSidebar onCreateNote={handleCreateNote} />
-            </div>
-
-            {/* Editor area */}
-            <div className={`
-                flex-1 h-full bg-white dark:bg-zinc-950 
-                ${!mobileShowEditor ? 'hidden lg:flex' : 'flex'}
-                flex-col
-            `}>
+        <div className="relative h-[calc(100vh-4rem)] -m-6 lg:-m-10 overflow-hidden">
+            {/* Content Layer */}
+            <div className="relative h-full z-10">
+                {/* Sidebar Bar - Only visible in editor mode */}
                 <AnimatePresence mode="wait">
-                    {activeNote ? (
-                        <NoteEditor
-                            key={activeNote.id}
-                            note={activeNote}
-                            onBack={handleMobileBack}
+                    {isEditorMode && (
+                        <NoteSidebarBar
+                            key="sidebar"
+                            notes={sortedNotes}
+                            activeNoteId={activeNoteId}
+                            onNoteClick={handleNoteClick}
+                            onBack={handleBackToGrid}
+                            onCreateNote={handleCreateNote}
                         />
-                    ) : hasNotes ? (
-                        <motion.div
-                            key="select-prompt"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="flex flex-col items-center justify-center h-full text-center px-6"
-                        >
-                            <motion.div
-                                animate={{ y: [0, -6, 0] }}
-                                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                                className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4"
-                            >
-                                <FileText size={28} className="text-zinc-400 dark:text-zinc-500" />
-                            </motion.div>
-                            <p className="text-sm text-zinc-400 dark:text-zinc-500 max-w-xs">
-                                Select a note from the sidebar to start editing, or press{' '}
-                                <kbd className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-[10px] font-mono">
-                                    Ctrl+N
-                                </kbd>{' '}
-                                to create a new one.
-                            </p>
-                        </motion.div>
-                    ) : (
-                        <EmptyState key="empty" onCreateNote={handleCreateNote} />
                     )}
                 </AnimatePresence>
+
+                {/* Main Content Area */}
+                <div className={cn(
+                    'h-full transition-all duration-500 ease-out',
+                    isEditorMode ? 'ml-80' : ''
+                )}>
+                    {/* Spatial Grid - Only visible when not in editor mode */}
+                    <SpatialGrid
+                        notes={sortedNotes}
+                        activeNoteId={activeNoteId}
+                        onNoteClick={handleNoteClick}
+                        onCreateNote={handleCreateNote}
+                        isEditorMode={isEditorMode}
+                    />
+
+                    {/* Editor - Only visible in editor mode */}
+                    <AnimatePresence mode="wait">
+                        {isEditorMode && activeNote && (
+                            <motion.div
+                                key="editor"
+                                initial={{ opacity: 0, y: 12 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 8 }}
+                                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                                className="absolute inset-0 flex items-start justify-center pt-6 pb-8 px-6 overflow-y-auto"
+                            >
+                                <div
+                                    className="w-full max-w-3xl rounded-2xl overflow-hidden"
+                                    style={{
+                                        background: 'rgba(6, 10, 18, 0.58)',
+                                        backdropFilter: 'blur(32px) saturate(150%)',
+                                        WebkitBackdropFilter: 'blur(32px) saturate(150%)',
+                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        boxShadow: '0 24px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.03) inset',
+                                        minHeight: 'calc(100vh - 14rem)',
+                                    }}
+                                >
+                                    <NoteEditor
+                                        note={activeNote}
+                                    />
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
             </div>
         </div>
     )

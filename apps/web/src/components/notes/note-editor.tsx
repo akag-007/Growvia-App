@@ -7,31 +7,22 @@ import {
     Italic,
     Strikethrough,
     Code,
-    Heading1,
-    Heading2,
-    Heading3,
     List,
     ListOrdered,
     Quote,
     Link2,
     Minus,
-    CheckSquare,
-    Eye,
-    EyeOff,
     Pin,
     PinOff,
     Trash2,
     Archive,
-    Palette,
     Save,
-    ArrowLeft,
-    Type,
+    AlignLeft,
+    Share2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNotesStore } from '@/stores/notes'
 import { updateNote, deleteNote } from '@/actions/notes'
-import { MarkdownRenderer } from './markdown-renderer'
-import { NOTE_COLORS } from './note-card'
 import type { Note } from '@/actions/notes'
 
 interface NoteEditorProps {
@@ -41,32 +32,24 @@ interface NoteEditorProps {
 
 const AUTOSAVE_DELAY = 1500
 
-export function NoteEditor({ note, onBack }: NoteEditorProps) {
-    const { updateNoteLocal, removeNote, setActiveNoteId, isSaving, setIsSaving, isEditorPreview, setIsEditorPreview } = useNotesStore()
+export function NoteEditor({ note }: NoteEditorProps) {
+    const { updateNoteLocal, removeNote, isSaving, setIsSaving } = useNotesStore()
 
     const [title, setTitle] = useState(note.title)
     const [content, setContent] = useState(note.content)
-    const [showColorPicker, setShowColorPicker] = useState(false)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
-    const textareaRef = useRef<HTMLTextAreaElement>(null)
-    const saveTimerRef = useRef<NodeJS.Timeout | null>(null)
+    const editorRef = useRef<HTMLDivElement>(null)
     const titleRef = useRef<HTMLTextAreaElement>(null)
+    const saveTimerRef = useRef<NodeJS.Timeout | null>(null)
+    // Track whether the contenteditable is initialized
+    const isInitialized = useRef(false)
 
-    // Sync state when note changes
-    useEffect(() => {
-        setTitle(note.title)
-        setContent(note.content)
-        setShowColorPicker(false)
-        setShowDeleteConfirm(false)
-    }, [note.id])
-
-    // Auto-save
+    // Schedule auto-save
     const scheduleAutoSave = useCallback(
         (newTitle: string, newContent: string) => {
             if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
             setIsSaving(true)
-
             saveTimerRef.current = setTimeout(async () => {
                 updateNoteLocal(note.id, {
                     title: newTitle,
@@ -80,117 +63,75 @@ export function NoteEditor({ note, onBack }: NoteEditorProps) {
         [note.id, updateNoteLocal, setIsSaving]
     )
 
-    // Cleanup
+    // Sync state when note changes
+    useEffect(() => {
+        setTitle(note.title)
+        setContent(note.content)
+        setShowDeleteConfirm(false)
+        isInitialized.current = false
+    }, [note.id])
+
+    // Initialize editor content
+    useEffect(() => {
+        if (editorRef.current && !isInitialized.current) {
+            editorRef.current.innerText = note.content
+            isInitialized.current = true
+        }
+    }, [note.id, note.content])
+
+    // Cleanup on unmount
     useEffect(() => {
         return () => {
             if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
         }
     }, [])
 
+    // Title change handler
     const handleTitleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const val = e.target.value
         setTitle(val)
         scheduleAutoSave(val, content)
     }
 
-    const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const val = e.target.value
-        setContent(val)
-        scheduleAutoSave(title, val)
+    // Content input handler from contenteditable
+    const handleContentInput = () => {
+        const newContent = editorRef.current?.innerText ?? ''
+        setContent(newContent)
+        scheduleAutoSave(title, newContent)
     }
 
-    // Markdown toolbar actions
-    const insertMarkdown = useCallback(
-        (before: string, after: string = '', placeholder: string = '') => {
-            const textarea = textareaRef.current
-            if (!textarea) return
-
-            const start = textarea.selectionStart
-            const end = textarea.selectionEnd
-            const selected = content.substring(start, end) || placeholder
-
-            const newContent =
-                content.substring(0, start) +
-                before +
-                selected +
-                after +
-                content.substring(end)
-
-            setContent(newContent)
-            scheduleAutoSave(title, newContent)
-
-            // Restore cursor
-            requestAnimationFrame(() => {
-                textarea.focus()
-                const cursorPos = start + before.length + selected.length
-                textarea.setSelectionRange(
-                    start + before.length,
-                    cursorPos
-                )
-            })
-        },
-        [content, title, scheduleAutoSave]
-    )
-
-    const insertAtLineStart = useCallback(
-        (prefix: string) => {
-            const textarea = textareaRef.current
-            if (!textarea) return
-
-            const start = textarea.selectionStart
-            const lineStart = content.lastIndexOf('\n', start - 1) + 1
-
-            const newContent =
-                content.substring(0, lineStart) +
-                prefix +
-                content.substring(lineStart)
-
-            setContent(newContent)
-            scheduleAutoSave(title, newContent)
-
-            requestAnimationFrame(() => {
-                textarea.focus()
-                textarea.setSelectionRange(
-                    start + prefix.length,
-                    start + prefix.length
-                )
-            })
-        },
-        [content, title, scheduleAutoSave]
-    )
+    // Rich text exec commands (uses browser's built-in execCommand for simple formatting)
+    const execFormat = useCallback((command: string, value?: string) => {
+        editorRef.current?.focus()
+        document.execCommand(command, false, value)
+    }, [])
 
     // Keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!e.ctrlKey && !e.metaKey) return
-
             switch (e.key.toLowerCase()) {
                 case 'b':
                     e.preventDefault()
-                    insertMarkdown('**', '**', 'bold text')
+                    execFormat('bold')
                     break
                 case 'i':
                     e.preventDefault()
-                    insertMarkdown('*', '*', 'italic text')
+                    execFormat('italic')
                     break
                 case 's':
                     e.preventDefault()
-                    // Force-save immediately
                     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
                     setIsSaving(true)
-                    updateNoteLocal(note.id, { title, content, updated_at: new Date().toISOString() })
-                    updateNote(note.id, { title, content }).then(() => setIsSaving(false))
-                    break
-                case 'e':
-                    e.preventDefault()
-                    setIsEditorPreview(!isEditorPreview)
+                    const currentContent = editorRef.current?.innerText ?? content
+                    updateNoteLocal(note.id, { title, content: currentContent, updated_at: new Date().toISOString() })
+                    updateNote(note.id, { title, content: currentContent }).then(() => setIsSaving(false))
                     break
             }
         }
-
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [content, title, isEditorPreview, insertMarkdown, note.id, updateNoteLocal, setIsSaving, setIsEditorPreview])
+    }, [content, title, execFormat, note.id, updateNoteLocal, setIsSaving])
 
     // Pin toggle
     const handleTogglePin = async () => {
@@ -202,28 +143,18 @@ export function NoteEditor({ note, onBack }: NoteEditorProps) {
     // Archive
     const handleArchive = async () => {
         updateNoteLocal(note.id, { is_archived: true })
-        setActiveNoteId(null)
         await updateNote(note.id, { is_archived: true })
         removeNote(note.id)
     }
 
     // Delete
     const handleDelete = async () => {
-        removeNote(note.id)
-        setActiveNoteId(null)
         await deleteNote(note.id)
-    }
-
-    // Color change
-    const handleColorChange = async (color: string | null) => {
-        updateNoteLocal(note.id, { color })
-        setShowColorPicker(false)
-        await updateNote(note.id, { color })
+        removeNote(note.id)
     }
 
     // Word count
     const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0
-    const charCount = content.length
 
     // Auto-resize title
     useEffect(() => {
@@ -233,198 +164,106 @@ export function NoteEditor({ note, onBack }: NoteEditorProps) {
         }
     }, [title])
 
+    // Format bar buttons
     const toolbarButtons = [
-        { icon: Bold, action: () => insertMarkdown('**', '**', 'bold'), title: 'Bold (Ctrl+B)' },
-        { icon: Italic, action: () => insertMarkdown('*', '*', 'italic'), title: 'Italic (Ctrl+I)' },
-        { icon: Strikethrough, action: () => insertMarkdown('~~', '~~', 'strikethrough'), title: 'Strikethrough' },
-        { icon: Code, action: () => insertMarkdown('`', '`', 'code'), title: 'Inline Code' },
+        { icon: Italic, action: () => execFormat('italic'), title: 'Italic (Ctrl+I)' },
+        { icon: Quote, action: () => execFormat('formatBlock', 'blockquote'), title: 'Quote' },
         { type: 'divider' as const },
-        { icon: Heading1, action: () => insertAtLineStart('# '), title: 'Heading 1' },
-        { icon: Heading2, action: () => insertAtLineStart('## '), title: 'Heading 2' },
-        { icon: Heading3, action: () => insertAtLineStart('### '), title: 'Heading 3' },
+        { icon: Minus, action: () => execFormat('insertHorizontalRule'), title: 'Divider' },
+        { icon: List, action: () => execFormat('insertUnorderedList'), title: 'Bullet List' },
+        { icon: ListOrdered, action: () => execFormat('insertOrderedList'), title: 'Numbered List' },
         { type: 'divider' as const },
-        { icon: List, action: () => insertAtLineStart('- '), title: 'Bullet List' },
-        { icon: ListOrdered, action: () => insertAtLineStart('1. '), title: 'Numbered List' },
-        { icon: CheckSquare, action: () => insertAtLineStart('- [ ] '), title: 'Checkbox' },
-        { icon: Quote, action: () => insertAtLineStart('> '), title: 'Blockquote' },
+        { icon: Bold, action: () => execFormat('bold'), title: 'Bold (Ctrl+B)' },
+        { icon: Strikethrough, action: () => execFormat('strikeThrough'), title: 'Strikethrough' },
+        { icon: Code, action: () => execFormat('insertHTML', '<code style="font-family:monospace;background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px">code</code>'), title: 'Code' },
         { type: 'divider' as const },
-        { icon: Link2, action: () => insertMarkdown('[', '](url)', 'link text'), title: 'Link' },
-        { icon: Minus, action: () => insertMarkdown('\n---\n', '', ''), title: 'Horizontal Rule' },
-        {
-            icon: Type,
-            action: () => insertMarkdown('\n```\n', '\n```\n', 'code block'),
-            title: 'Code Block',
-        },
+        { icon: AlignLeft, action: () => execFormat('removeFormat'), title: 'Clear Formatting' },
+        { icon: Link2, action: () => {
+            const url = prompt('Enter URL:')
+            if (url) execFormat('createLink', url)
+        }, title: 'Link' },
+        { icon: Share2, action: () => {}, title: 'Share' },
     ]
 
     return (
-        <motion.div
-            key={note.id}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25 }}
-            className="flex flex-col h-full"
-        >
-            {/* Top action bar */}
-            <div className="flex items-center justify-between px-4 pr-32 py-2.5 border-b border-zinc-100 dark:border-zinc-800/60 bg-white/50 dark:bg-zinc-900/30 backdrop-blur-sm">
-                <div className="flex items-center gap-1">
-                    {onBack && (
-                        <motion.button
-                            whileTap={{ scale: 0.9 }}
-                            onClick={onBack}
-                            className="p-2 rounded-lg text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors lg:hidden"
-                        >
-                            <ArrowLeft size={18} />
-                        </motion.button>
-                    )}
-
-                    <motion.button
-                        whileTap={{ scale: 0.9 }}
-                        onClick={handleTogglePin}
-                        className={cn(
-                            'p-2 rounded-lg transition-colors',
-                            note.is_pinned
-                                ? 'text-amber-500 bg-amber-50 dark:bg-amber-900/20'
-                                : 'text-zinc-400 hover:text-amber-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                        )}
-                        title={note.is_pinned ? 'Unpin' : 'Pin'}
-                    >
-                        {note.is_pinned ? <PinOff size={16} /> : <Pin size={16} />}
-                    </motion.button>
-
-                    {/* Color picker */}
-                    <div className="relative">
-                        <motion.button
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => setShowColorPicker(!showColorPicker)}
-                            className="p-2 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                            title="Note Color"
-                        >
-                            <Palette size={16} />
-                        </motion.button>
-                        <AnimatePresence>
-                            {showColorPicker && (
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.9, y: -4 }}
-                                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                    className="absolute top-full left-0 mt-1 z-50 p-2 bg-white dark:bg-zinc-800 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-700 flex gap-1.5"
-                                >
-                                    <button
-                                        onClick={() => handleColorChange(null)}
-                                        className={cn(
-                                            'w-6 h-6 rounded-full border-2 bg-zinc-200 dark:bg-zinc-600 transition-transform',
-                                            !note.color ? 'border-zinc-800 dark:border-white scale-110' : 'border-transparent hover:scale-110'
-                                        )}
-                                        title="No color"
-                                    />
-                                    {Object.entries(NOTE_COLORS).map(([key, val]) => (
-                                        <button
-                                            key={key}
-                                            onClick={() => handleColorChange(key)}
-                                            className={cn(
-                                                'w-6 h-6 rounded-full border-2 transition-transform',
-                                                val.dot,
-                                                note.color === key ? 'border-zinc-800 dark:border-white scale-110' : 'border-transparent hover:scale-110'
-                                            )}
-                                            title={key}
-                                        />
-                                    ))}
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-
-                    <motion.button
-                        whileTap={{ scale: 0.9 }}
-                        onClick={handleArchive}
-                        className="p-2 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                        title="Archive"
-                    >
-                        <Archive size={16} />
-                    </motion.button>
+        <div className="flex flex-col h-full">
+            {/* Floating Toolbar */}
+            <div className="flex items-center justify-between px-5 py-2.5 border-b border-white/[0.07]" style={{ background: 'rgba(0,0,0,0.15)' }}>
+                {/* Format buttons */}
+                <div className="flex items-center gap-0.5">
+                    {toolbarButtons.map((btn, i) => {
+                        if ('type' in btn && btn.type === 'divider') {
+                            return <div key={`div-${i}`} className="w-px h-4 bg-white/10 mx-1.5" />
+                        }
+                        const Icon = btn.icon!
+                        return (
+                            <motion.button
+                                key={i}
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onMouseDown={(e) => { e.preventDefault(); btn.action?.() }}
+                                title={btn.title}
+                                className="p-1.5 rounded-md text-white/40 hover:text-white/80 hover:bg-white/[0.08] transition-colors"
+                            >
+                                <Icon size={14} />
+                            </motion.button>
+                        )
+                    })}
                 </div>
 
-                <div className="flex items-center gap-1.5">
+                {/* Right actions */}
+                <div className="flex items-center gap-1">
                     {/* Save indicator */}
                     <AnimatePresence mode="wait">
                         {isSaving ? (
-                            <motion.div
-                                key="saving"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="flex items-center gap-1.5 text-xs text-amber-500"
-                            >
-                                <motion.div
-                                    animate={{ rotate: 360 }}
-                                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                                >
-                                    <Save size={12} />
+                            <motion.div key="saving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1 text-[11px] text-amber-400/80 mr-2">
+                                <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
+                                    <Save size={11} />
                                 </motion.div>
-                                <span>Saving...</span>
+                                <span>Saving</span>
                             </motion.div>
                         ) : (
-                            <motion.div
-                                key="saved"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="flex items-center gap-1.5 text-xs text-emerald-500"
-                            >
-                                <Save size={12} />
-                                <span>Saved</span>
+                            <motion.div key="saved" initial={{ opacity: 0 }} animate={{ opacity: 0.7 }} exit={{ opacity: 0 }} className="flex items-center gap-1 text-[11px] text-teal-400/70 mr-2">
+                                <Save size={11} />
                             </motion.div>
                         )}
                     </AnimatePresence>
 
-                    {/* Preview toggle */}
-                    <motion.button
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => setIsEditorPreview(!isEditorPreview)}
-                        className={cn(
-                            'p-2 rounded-lg transition-colors',
-                            isEditorPreview
-                                ? 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                                : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                        )}
-                        title={isEditorPreview ? 'Edit (Ctrl+E)' : 'Preview (Ctrl+E)'}
+                    <motion.button whileTap={{ scale: 0.9 }} onClick={handleTogglePin}
+                        className={cn('p-1.5 rounded-lg transition-colors', note.is_pinned ? 'text-amber-400' : 'text-white/30 hover:text-white/60 hover:bg-white/5')}
+                        title={note.is_pinned ? 'Unpin' : 'Pin'}
                     >
-                        {isEditorPreview ? <EyeOff size={16} /> : <Eye size={16} />}
+                        {note.is_pinned ? <PinOff size={14} /> : <Pin size={14} />}
+                    </motion.button>
+
+                    <motion.button whileTap={{ scale: 0.9 }} onClick={handleArchive}
+                        className="p-1.5 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors"
+                        title="Archive"
+                    >
+                        <Archive size={14} />
                     </motion.button>
 
                     {/* Delete */}
                     <div className="relative">
-                        <motion.button
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => setShowDeleteConfirm(!showDeleteConfirm)}
-                            className="p-2 rounded-lg text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        <motion.button whileTap={{ scale: 0.9 }} onClick={() => setShowDeleteConfirm(!showDeleteConfirm)}
+                            className="p-1.5 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                             title="Delete"
                         >
-                            <Trash2 size={16} />
+                            <Trash2 size={14} />
                         </motion.button>
                         <AnimatePresence>
                             {showDeleteConfirm && (
                                 <motion.div
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.9 }}
-                                    className="absolute right-0 top-full mt-1 z-50 p-3 bg-white dark:bg-zinc-800 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-700 min-w-[180px]"
+                                    initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }}
+                                    className="absolute right-0 top-full mt-1 z-50 p-3 rounded-xl shadow-xl border border-white/10 min-w-[170px]"
+                                    style={{ background: 'rgba(8,8,20,0.92)', backdropFilter: 'blur(20px)' }}
                                 >
-                                    <p className="text-xs text-zinc-600 dark:text-zinc-300 mb-2">
-                                        Delete this note permanently?
-                                    </p>
+                                    <p className="text-xs text-white/60 mb-2.5">Delete this note permanently?</p>
                                     <div className="flex gap-2">
-                                        <button
-                                            onClick={() => setShowDeleteConfirm(false)}
-                                            className="flex-1 px-3 py-1.5 text-xs rounded-lg bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 transition-colors"
-                                        >
+                                        <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 px-2.5 py-1.5 text-xs rounded-lg bg-white/8 text-white/60 hover:bg-white/15 transition-colors">
                                             Cancel
                                         </button>
-                                        <button
-                                            onClick={handleDelete}
-                                            className="flex-1 px-3 py-1.5 text-xs rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
-                                        >
+                                        <button onClick={handleDelete} className="flex-1 px-2.5 py-1.5 text-xs rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors">
                                             Delete
                                         </button>
                                     </div>
@@ -435,110 +274,66 @@ export function NoteEditor({ note, onBack }: NoteEditorProps) {
                 </div>
             </div>
 
-            {/* Toolbar */}
-            {!isEditorPreview && (
-                <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="flex items-center gap-0.5 px-4 py-1.5 border-b border-zinc-100 dark:border-zinc-800/60 overflow-x-auto scrollbar-hide bg-zinc-50/40 dark:bg-zinc-900/20"
-                >
-                    {toolbarButtons.map((btn, i) => {
-                        if ('type' in btn && btn.type === 'divider') {
-                            return (
-                                <div
-                                    key={`divider-${i}`}
-                                    className="w-px h-5 bg-zinc-200 dark:bg-zinc-700 mx-1"
-                                />
-                            )
-                        }
-                        const Icon = btn.icon!
-                        return (
-                            <motion.button
-                                key={i}
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                onClick={btn.action}
-                                title={btn.title}
-                                className="p-1.5 rounded-md text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-200/60 dark:hover:bg-zinc-700/60 transition-colors"
-                            >
-                                <Icon size={15} />
-                            </motion.button>
-                        )
-                    })}
-                </motion.div>
-            )}
+            {/* Editor area */}
+            <div className="flex-1 overflow-y-auto scrollbar-thin">
+                <div className="max-w-2xl mx-auto px-10 pt-10 pb-16">
 
-            {/* Editor / Preview area */}
-            <div className="flex-1 overflow-y-auto">
-                <div className="max-w-3xl mx-auto px-6 py-6">
-                    {/* Title */}
+                    {/* Date label */}
+                    <p className="text-[10px] text-white/30 uppercase tracking-widest mb-4 font-medium">
+                        Personal Musings — {new Date(note.created_at ?? note.updated_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).toUpperCase()}
+                    </p>
+
+                    {/* Title — uses Newsreader serif */}
                     <textarea
                         ref={titleRef}
                         value={title}
                         onChange={handleTitleChange}
                         placeholder="Untitled"
                         rows={1}
-                        className="w-full text-3xl font-bold text-zinc-900 dark:text-white bg-transparent border-none outline-none resize-none placeholder:text-zinc-300 dark:placeholder:text-zinc-600 leading-tight mb-4 overflow-hidden"
-                        readOnly={isEditorPreview}
+                        className="w-full bg-transparent border-none outline-none resize-none placeholder:text-white/20 leading-tight mb-6 overflow-hidden"
+                        style={{
+                            fontFamily: '"Newsreader", "Georgia", serif',
+                            fontSize: 'clamp(2rem, 5vw, 2.8rem)',
+                            fontWeight: 400,
+                            color: 'rgba(255,255,255,0.92)',
+                            letterSpacing: '-0.01em',
+                        }}
                     />
 
-                    {/* Content */}
-                    <AnimatePresence mode="wait">
-                        {isEditorPreview ? (
-                            <motion.div
-                                key="preview"
-                                initial={{ opacity: 0, x: 10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -10 }}
-                                transition={{ duration: 0.2 }}
-                                className="min-h-[50vh]"
-                            >
-                                {content ? (
-                                    <MarkdownRenderer content={content} />
-                                ) : (
-                                    <p className="text-zinc-400 dark:text-zinc-500 italic">
-                                        Nothing to preview yet. Start writing!
-                                    </p>
-                                )}
-                            </motion.div>
-                        ) : (
-                            <motion.div
-                                key="editor"
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: 10 }}
-                                transition={{ duration: 0.2 }}
-                            >
-                                <textarea
-                                    ref={textareaRef}
-                                    value={content}
-                                    onChange={handleContentChange}
-                                    placeholder="Start writing... Use markdown for formatting."
-                                    className="w-full min-h-[60vh] text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300 bg-transparent border-none outline-none resize-none placeholder:text-zinc-300 dark:placeholder:text-zinc-600 font-mono"
-                                    spellCheck={false}
-                                />
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                    {/* Body — contenteditable plain rich text */}
+                    <div
+                        ref={editorRef}
+                        contentEditable
+                        suppressContentEditableWarning
+                        onInput={handleContentInput}
+                        data-placeholder="There is a specific quality to the light at 5:42 AM..."
+                        className="note-editor-body min-h-[50vh] focus:outline-none"
+                        style={{
+                            fontFamily: '"Newsreader", "Georgia", serif',
+                            fontSize: '1rem',
+                            lineHeight: '1.85',
+                            color: 'rgba(255,255,255,0.72)',
+                            caretColor: 'rgba(20,184,166,0.9)',
+                        }}
+                    />
                 </div>
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-between px-6 py-2 border-t border-zinc-100 dark:border-zinc-800/60 bg-zinc-50/40 dark:bg-zinc-900/20 text-[11px] text-zinc-400 dark:text-zinc-500">
-                <div className="flex items-center gap-4">
+            <div
+                className="flex items-center justify-between px-8 py-2.5 border-t border-white/[0.06]"
+                style={{ background: 'rgba(0,0,0,0.10)', fontSize: '11px', color: 'rgba(255,255,255,0.25)' }}
+            >
+                <div className="flex items-center gap-3">
+                    <span>Saved {new Date(note.updated_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span>·</span>
                     <span>{wordCount} words</span>
-                    <span>{charCount} characters</span>
                 </div>
                 <div className="flex items-center gap-3">
-                    <span>
-                        <kbd className="px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-[9px] font-mono">Ctrl+S</kbd> save
-                    </span>
-                    <span>
-                        <kbd className="px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-[9px] font-mono">Ctrl+E</kbd> preview
-                    </span>
+                    <span><kbd className="px-1 py-0.5 rounded bg-white/8 text-[9px] font-mono">Ctrl+S</kbd> save</span>
+                    <span><kbd className="px-1 py-0.5 rounded bg-white/8 text-[9px] font-mono">Ctrl+B</kbd> bold</span>
                 </div>
             </div>
-        </motion.div>
+        </div>
     )
 }

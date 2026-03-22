@@ -68,7 +68,7 @@ export function RevisitCard({ revisit }: RevisitCardProps) {
     return (
         <motion.div
             layout
-            className="group relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all"
+            className="group relative bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl p-5 shadow-lg shadow-black/20 hover:shadow-xl hover:scale-[1.01] transition-all"
         >
             {/* Type Tag */}
             <div className="flex justify-between items-start mb-3">
@@ -196,21 +196,21 @@ export function RevisitCard({ revisit }: RevisitCardProps) {
                         >
                             <button
                                 onClick={() => handleRating('hard')}
-                                className="flex-1 flex flex-col items-center gap-1 py-2 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-100 transition-colors"
+                                className="flex-1 flex flex-col items-center gap-1 py-2 bg-red-500/10 backdrop-blur-md border border-red-400/20 text-red-400 dark:text-red-300 rounded-xl hover:bg-red-500/20 hover:scale-[1.02] transition-all"
                             >
                                 <span className="text-lg">😫</span>
                                 <span className="text-[10px] font-bold uppercase">Hard</span>
                             </button>
                             <button
                                 onClick={() => handleRating('medium')}
-                                className="flex-1 flex flex-col items-center gap-1 py-2 bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 rounded-xl hover:bg-amber-100 transition-colors"
+                                className="flex-1 flex flex-col items-center gap-1 py-2 bg-amber-500/10 backdrop-blur-md border border-amber-400/20 text-amber-400 dark:text-amber-300 rounded-xl hover:bg-amber-500/20 hover:scale-[1.02] transition-all"
                             >
                                 <span className="text-lg">😐</span>
                                 <span className="text-[10px] font-bold uppercase">Med</span>
                             </button>
                             <button
                                 onClick={() => handleRating('easy')}
-                                className="flex-1 flex flex-col items-center gap-1 py-2 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 rounded-xl hover:bg-emerald-100 transition-colors"
+                                className="flex-1 flex flex-col items-center gap-1 py-2 bg-emerald-500/10 backdrop-blur-md border border-emerald-400/20 text-emerald-400 dark:text-emerald-300 rounded-xl hover:bg-emerald-500/20 hover:scale-[1.02] transition-all"
                             >
                                 <span className="text-lg">🤩</span>
                                 <span className="text-[10px] font-bold uppercase">Easy</span>

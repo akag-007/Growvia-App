@@ -25,7 +25,7 @@ export default async function DashboardLayout({
                 <div className="flex-1 flex flex-col h-full overflow-hidden relative">
                     <Topbar user={user} />
                     <main className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 pt-20 lg:pt-20 p-6 lg:p-10 pb-32">
-                        <div className="mx-auto max-w-6xl">
+                        <div className="w-full">
                             {children}
                         </div>
                     </main>

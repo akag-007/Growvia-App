@@ -8,7 +8,8 @@ interface CalendarWidgetProps {
 }
 
 export function CalendarWidget({ selectedDate, onDateSelect }: CalendarWidgetProps) {
-    const currentMonth = format(selectedDate, 'MMMM yyyy')
+    const monthLabel = format(selectedDate, 'MMMM')
+    const yearLabel = format(selectedDate, 'yyyy')
 
     const generateCalendarDays = () => {
         const startOfCurrentMonth = startOfMonth(selectedDate)
@@ -28,26 +29,32 @@ export function CalendarWidget({ selectedDate, onDateSelect }: CalendarWidgetPro
     }
 
     const calendarDays = generateCalendarDays()
-    const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    // Single-letter day labels to prevent squishing
+    const weekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
     return (
-        <div className="rounded-3xl p-8 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
+        <div
+            className="rounded-3xl p-5 transition-all duration-300 w-full"
             style={{
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)',
-                backdropFilter: 'blur(20px)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)',
-            }}>
-            {/* Header with month/year */}
-            <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold text-white">{currentMonth}</h3>
+                background: 'rgba(255,255,255,0.08)',
+                backdropFilter: 'blur(24px) saturate(140%)',
+                WebkitBackdropFilter: 'blur(24px) saturate(140%)',
+                border: '1px solid rgba(255,255,255,0.11)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.13)',
+            }}
+        >
+            {/* Header — split month and year on two lines for breathing room */}
+            <div className="text-center mb-5">
+                <h3 className="text-xl font-bold text-white leading-tight">{monthLabel}</h3>
+                <p className="text-xl font-bold text-white/70 leading-tight">{yearLabel}</p>
             </div>
 
-            {/* Week days */}
-            <div className="grid grid-cols-7 gap-0.5 mb-2">
-                {weekDays.map((day) => (
+            {/* Day-of-week headers */}
+            <div className="grid grid-cols-7 mb-1">
+                {weekDays.map((day, i) => (
                     <div
-                        key={day}
-                        className="text-center text-xs font-bold text-zinc-400 py-1.5"
+                        key={i}
+                        className="flex items-center justify-center text-[10px] font-semibold text-zinc-400 py-1"
                     >
                         {day}
                     </div>
@@ -55,7 +62,7 @@ export function CalendarWidget({ selectedDate, onDateSelect }: CalendarWidgetPro
             </div>
 
             {/* Calendar days */}
-            <div className="grid grid-cols-7 gap-0.5">
+            <div className="grid grid-cols-7">
                 {calendarDays.map((date, index) => {
                     const isSelected = isSameDay(date, selectedDate)
                     const isToday = isTodayDate(date)
@@ -66,24 +73,26 @@ export function CalendarWidget({ selectedDate, onDateSelect }: CalendarWidgetPro
                             key={index}
                             onClick={() => isCurrentMonth && onDateSelect?.(date)}
                             disabled={!isCurrentMonth}
-                            className={`
-                                relative w-full aspect-square flex items-center justify-center rounded-lg text-base font-bold transition-all duration-200
-                                ${isCurrentMonth ? 'text-white' : 'text-zinc-600'}
-                                ${isSelected ? 'scale-105' : 'hover:scale-100'}
-                                ${!isCurrentMonth ? 'cursor-not-allowed' : 'cursor-pointer'}
-                            `}
+                            className="flex items-center justify-center aspect-square text-xs font-medium transition-all duration-150 rounded-lg"
                             style={{
+                                color: isCurrentMonth
+                                    ? isSelected || isToday ? '#fff' : 'rgba(255,255,255,0.75)'
+                                    : 'rgba(255,255,255,0.18)',
+                                cursor: isCurrentMonth ? 'pointer' : 'default',
                                 ...(isToday && !isSelected && {
                                     background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-                                    boxShadow: '0 0 12px rgba(99,102,241,0.4), inset 0 1.5px solid rgba(255,255,255,0.3)',
+                                    boxShadow: '0 0 10px rgba(99,102,241,0.45)',
+                                    fontWeight: 700,
                                 }),
                                 ...(isSelected && isToday && {
                                     background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
-                                    boxShadow: '0 0 16px rgba(139,92,246,0.5), inset 0 1.5px solid rgba(255,255,255,0.4)',
+                                    boxShadow: '0 0 14px rgba(139,92,246,0.55)',
+                                    fontWeight: 700,
                                 }),
                                 ...(isSelected && !isToday && {
                                     background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
-                                    boxShadow: '0 0 12px rgba(234,88,12,0.4), inset 0 1.5px solid rgba(255,255,255,0.3)',
+                                    boxShadow: '0 0 10px rgba(234,88,12,0.4)',
+                                    fontWeight: 700,
                                 }),
                             }}
                             aria-label={format(date, 'MMMM d, yyyy')}

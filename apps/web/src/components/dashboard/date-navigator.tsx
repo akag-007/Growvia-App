@@ -30,13 +30,16 @@ export function DateNavigator({ selectedDate, onDateChange }: DateNavigatorProps
     }
 
     return (
-        <div className="flex items-center justify-center gap-4 mx-auto rounded-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
+        <div className="flex items-center justify-center gap-4 mx-auto rounded-2xl transition-all duration-300"
             style={{
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
-                backdropFilter: 'blur(20px)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.15)',
+                background: 'rgba(0,0,0,0.38)',
+                backdropFilter: 'blur(24px) saturate(140%)',
+                WebkitBackdropFilter: 'blur(24px) saturate(140%)',
+                border: '1px solid rgba(255,255,255,0.10)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.10)',
                 width: 'fit-content',
                 maxWidth: '500px',
+                padding: '6px 8px',
             }}>
             <button
                 onClick={handlePreviousDay}

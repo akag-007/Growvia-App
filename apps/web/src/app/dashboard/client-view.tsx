@@ -14,7 +14,7 @@ import { format, isSameDay, parseISO } from 'date-fns'
 
 type ViewMode = 'list' | 'matrix'
 
-export default function ClientDashboard({ initialTasks, categories, user }: { initialTasks: any[], categories: any[], user?: { user_metadata?: { full_name?: string } } }) {
+export default function ClientDashboard({ initialTasks, categories, user }: { initialTasks: any[], categories: any[], user?: { email?: string; user_metadata?: { full_name?: string } } }) {
     const [isCreateOpen, setIsCreateOpen] = useState(false)
     const [viewMode, setViewMode] = useState<ViewMode>('list')
     const [selectedDate, setSelectedDate] = useState(new Date())
@@ -70,13 +70,13 @@ export default function ClientDashboard({ initialTasks, categories, user }: { in
 
             {/* 3-Column Dashboard Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                {/* Left Sidebar - 2 columns */}
-                <div className="lg:col-span-2">
+                {/* Left Sidebar - 3 columns */}
+                <div className="lg:col-span-3">
                     <DashboardSidebar selectedDate={selectedDate} onDateSelect={setSelectedDate} />
                 </div>
 
-                {/* Main Content - 7 columns */}
-                <div className="lg:col-span-7 flex flex-col gap-6">
+                {/* Main Content - 6 columns */}
+                <div className="lg:col-span-6 flex flex-col gap-6">
                     {/* Date Selector - Centered */}
                     <div className="flex justify-center">
                         <DateNavigator selectedDate={selectedDate} onDateChange={setSelectedDate} />
@@ -87,7 +87,7 @@ export default function ClientDashboard({ initialTasks, categories, user }: { in
                         <div className="flex items-center justify-between gap-4">
                             {/* View toggle */}
                             <div className="flex items-center rounded-xl overflow-hidden"
-                                style={{ background: 'rgba(255,255,255,0.05)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+                                style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.10)', boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }}>
                                 <button
                                     onClick={() => setViewMode('list')}
                                     className="flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all"

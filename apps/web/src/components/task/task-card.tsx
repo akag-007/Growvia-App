@@ -61,7 +61,7 @@ const expandTransition = {
 }
 
 /** Soft squircle — not a full pill — so labels aren’t clipped at the ends. Matches sheen + glass outline. */
-const cardShape = '!rounded-[28px]'
+const cardShape = '!rounded-2xl'
 
 export function TaskCard({ task }: { task: any }) {
     const prefersReducedMotion = useReducedMotion()
@@ -109,8 +109,8 @@ export function TaskCard({ task }: { task: any }) {
             : null
 
     const frostedCardBackground = priorityMeta
-        ? `linear-gradient(165deg, ${priorityMeta.bg} 0%, rgba(12, 12, 18, 0.34) 45%, rgba(12, 12, 18, 0.26) 100%)`
-        : `linear-gradient(165deg, rgba(99, 102, 241, 0.14) 0%, rgba(12, 12, 18, 0.32) 50%, rgba(12, 12, 18, 0.22) 100%)`
+        ? `linear-gradient(165deg, ${priorityMeta.bg} 0%, rgba(12, 12, 18, 0.20) 45%, rgba(12, 12, 18, 0.15) 100%)`
+        : `linear-gradient(165deg, rgba(99, 102, 241, 0.08) 0%, rgba(12, 12, 18, 0.15) 50%, rgba(12, 12, 18, 0.10) 100%)`
 
     // Collapse when clicking outside the card (list view); skip while a modal from this card is open
     useEffect(() => {
@@ -137,7 +137,7 @@ export function TaskCard({ task }: { task: any }) {
                 ref={cardRef}
                 layout
                 initial={false}
-                className={`group relative z-0 ${cardShape} overflow-hidden transition-opacity ${
+                className={`group relative z-0 overflow-hidden transition-opacity ${
                     completed ? 'opacity-75' : ''
                 }`}
                 style={{
@@ -145,7 +145,8 @@ export function TaskCard({ task }: { task: any }) {
                     background: frostedCardBackground,
                     border: '1px solid rgba(255, 255, 255, 0.12)',
                     boxShadow:
-                        '0 12px 40px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 0 0 1px rgba(255, 255, 255, 0.04)',
+                        '0 16px 48px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.16), inset 0 0 0 1px rgba(255, 255, 255, 0.04)',
+                    borderRadius: '20px',
                 }}
                 transition={{
                     layout: { duration: 0.28, ease: [0.4, 0, 0.2, 1] },
@@ -189,7 +190,7 @@ export function TaskCard({ task }: { task: any }) {
 
                 {/* Hover sheen — frosted glass highlight */}
                 <div
-                    className={`pointer-events-none absolute inset-0 z-[1] ${cardShape} bg-gradient-to-br from-white/[0.12] via-white/[0.03] to-violet-500/[0.08] transition-opacity duration-300 motion-reduce:opacity-0 ${
+                    className={`pointer-events-none absolute inset-0 z-[1] ${cardShape} bg-gradient-to-br from-white/6 via-white/2 to-violet-500/4 transition-opacity duration-300 motion-reduce:opacity-0 ${
                         prefersReducedMotion ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'
                     }`}
                     aria-hidden
