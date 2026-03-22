@@ -109,7 +109,7 @@ export const Logo = () => {
                 animate={{ opacity: 1 }}
                 className="font-semibold text-white whitespace-pre"
             >
-                FocusFlow
+                Growvia
             </motion.span>
         </Link>
     )
