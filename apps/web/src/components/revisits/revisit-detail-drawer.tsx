@@ -111,7 +111,7 @@ export function RevisitDetailDrawer({ revisit, onClose }: Props) {
         <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">{s}</p>
     )
 
-    const inputCls = "w-full bg-zinc-800/60 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all"
+    const inputCls = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all"
 
     const displayType = revisit?.type === 'custom' && revisit?.custom_type
         ? revisit.custom_type
@@ -138,10 +138,10 @@ export function RevisitDetailDrawer({ revisit, onClose }: Props) {
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-                        className="fixed right-0 top-0 h-full w-full max-w-md bg-zinc-950 border-l border-zinc-800 z-50 flex flex-col overflow-hidden shadow-2xl"
+                        className="fixed right-0 top-0 h-full w-full max-w-md glass-sidebar border-l border-white/10 z-50 flex flex-col overflow-hidden shadow-2xl"
                     >
                         {/* Header */}
-                        <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-800 shrink-0">
+                        <div className="flex items-center justify-between px-6 py-5 border-b border-white/10 shrink-0">
                             <div className="flex items-center gap-3">
                                 <BookOpen size={18} className="text-emerald-400" />
                                 <div>
@@ -271,7 +271,7 @@ export function RevisitDetailDrawer({ revisit, onClose }: Props) {
                             </div>
 
                             {/* Read-only stats */}
-                            <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 grid grid-cols-2 gap-3 text-sm">
+                            <div className="rounded-2xl glass-card p-4 grid grid-cols-2 gap-3 text-sm">
                                 <Stat icon={<RotateCcw size={13} />} label="Reviews" value={String(revisit.review_count)} />
                                 <Stat icon={<CalendarDays size={13} />} label="Next Review"
                                     value={format(parseISO(revisit.next_review_at), 'MMM d, yyyy')} />
@@ -285,7 +285,7 @@ export function RevisitDetailDrawer({ revisit, onClose }: Props) {
                         </div>
 
                         {/* Footer */}
-                        <div className="px-6 py-4 border-t border-zinc-800 shrink-0 flex gap-3">
+                        <div className="px-6 py-4 border-t border-white/10 shrink-0 flex gap-3">
                             {/* Delete */}
                             {!deleting ? (
                                 <button onClick={() => setDeleting(true)}

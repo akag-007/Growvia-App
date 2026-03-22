@@ -10,12 +10,10 @@ import {
     FileText,
     Settings,
     Layers,
-    UserCog, // Placeholder icon for User
     RotateCcw
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { cn } from '@/lib/utils'
 
 export function Sidebar() {
     const [open, setOpen] = useState(false)
@@ -25,49 +23,49 @@ export function Sidebar() {
             label: 'Dashboard',
             href: '/dashboard',
             icon: (
-                <LayoutDashboard className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+                <LayoutDashboard className="text-white/70 h-5 w-5 flex-shrink-0" />
             ),
         },
         {
             label: 'Projects',
             href: '/dashboard/projects',
             icon: (
-                <Layers className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+                <Layers className="text-white/70 h-5 w-5 flex-shrink-0" />
             ),
         },
         {
             label: 'Calendar',
             href: '/dashboard/calendar',
             icon: (
-                <Calendar className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+                <Calendar className="text-white/70 h-5 w-5 flex-shrink-0" />
             ),
         },
         {
             label: 'Gamification',
             href: '/dashboard/gamification',
             icon: (
-                <Trophy className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+                <Trophy className="text-white/70 h-5 w-5 flex-shrink-0" />
             ),
         },
         {
             label: 'Challenges',
             href: '/dashboard/challenges',
             icon: (
-                <Target className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+                <Target className="text-white/70 h-5 w-5 flex-shrink-0" />
             ),
         },
         {
             label: 'Notes',
             href: '/dashboard/notes',
             icon: (
-                <FileText className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+                <FileText className="text-white/70 h-5 w-5 flex-shrink-0" />
             ),
         },
         {
             label: 'Revisits',
             href: '/dashboard/revisits',
             icon: (
-                <RotateCcw className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+                <RotateCcw className="text-white/70 h-5 w-5 flex-shrink-0" />
             ),
         }
     ]
@@ -89,7 +87,7 @@ export function Sidebar() {
                             label: 'Settings',
                             href: '/dashboard/settings',
                             icon: (
-                                <Settings className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+                                <Settings className="text-white/70 h-5 w-5 flex-shrink-0" />
                             ),
                         }}
                     />
@@ -103,13 +101,13 @@ export const Logo = () => {
     return (
         <Link
             href="/dashboard"
-            className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
+            className="font-normal flex space-x-2 items-center text-sm text-white py-1 relative z-20"
         >
-            <div className="h-5 w-6 bg-black dark:bg-white rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" />
+            <div className="h-5 w-6 bg-white/90 rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" />
             <motion.span
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="font-medium text-black dark:text-white whitespace-pre"
+                className="font-semibold text-white whitespace-pre"
             >
                 FocusFlow
             </motion.span>
@@ -121,9 +119,9 @@ export const LogoIcon = () => {
     return (
         <Link
             href="/dashboard"
-            className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
+            className="font-normal flex space-x-2 items-center text-sm text-white py-1 relative z-20"
         >
-            <div className="h-5 w-6 bg-black dark:bg-white rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" />
+            <div className="h-5 w-6 bg-white/90 rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" />
         </Link>
     )
 }

@@ -94,21 +94,18 @@ export function CreateTaskForm({
                 exit={{ scale: 0.96, opacity: 0, y: 12 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 28 }}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-md rounded-2xl [&::-webkit-scrollbar]:hidden"
+                className="glass-modal w-full max-w-md rounded-2xl [&::-webkit-scrollbar]:hidden"
                 style={{
-                    background: 'linear-gradient(145deg, #16172a 0%, #0d0e1a 100%)',
-                    border: '1px solid rgba(99,102,241,0.2)',
-                    boxShadow: '0 25px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(99,102,241,0.06) inset',
                     maxHeight: '90vh',
                     overflowY: 'scroll',
                     scrollbarWidth: 'none',   /* Firefox */
                 }}
             >
-                {/* Header */}
                 <div className="flex items-center justify-between px-6 pt-6 pb-4 sticky top-0 z-10"
                     style={{
-                        background: 'linear-gradient(145deg, #16172a 0%, #0d0e1a 100%)',
+                        background: 'rgba(12,12,22,0.85)',
                         borderBottom: '1px solid rgba(255,255,255,0.06)',
+                        backdropFilter: 'blur(20px)',
                     }}>
                     <h2 className="text-xl font-bold text-white">Create New Task</h2>
                     <button

@@ -124,9 +124,9 @@ function ScheduleDropdown({ onSchedule, onClose, anchorRect }: {
                 initial={{ opacity: 0, scale: 0.95, y: -6 }} animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: -4 }}
                 style={{ position: 'fixed', top, right, zIndex: 9999, width: 224 }}
-                className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl overflow-hidden"
+                className="glass-modal rounded-2xl overflow-hidden"
             >
-                <div className="px-4 pt-3 pb-2 border-b border-zinc-800">
+                <div className="px-4 pt-3 pb-2 border-b border-white/10">
                     <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
                         <CalendarDays size={12} /> Schedule Next Review
                     </p>
@@ -202,7 +202,8 @@ function RevisitRow({ revisit, index, onRowClick }: {
             transition={{ delay: index * 0.03 }}
             onClick={() => onRowClick(revisit)}
             className={cn(
-                "border-b border-zinc-800 hover:bg-zinc-800/40 transition-colors cursor-pointer group",
+                "border-b border-white/10 cursor-pointer group",
+                "[&>td]:hover:bg-white/5 [&>td]:transition-colors",
                 isCompleted && "opacity-50"
             )}
         >
@@ -350,8 +351,8 @@ function RevisitCard({ revisit, onRowClick }: { revisit: Revisit; onRowClick: (r
                     animation: 'spin-border 3s linear infinite',
                 }}
             />
-            {/* Inner solid backing (masks the gradient except at edges → border effect) */}
-            <div className="absolute inset-[1.5px] rounded-[14px] bg-zinc-900" />
+            {/* Inner glass backing (masks the gradient except at edges → border effect) */}
+            <div className="absolute inset-[1.5px] rounded-[14px] glass-card !border-none !shadow-none" />
 
             {/* Status-tinted accent */}
             <div className={cn(
@@ -581,25 +582,29 @@ export function RevisitsView({ initialRevisits }: RevisitsViewProps) {
     return (
         <div className="max-w-6xl mx-auto pb-20">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
-                <div>
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="p-1.5 bg-emerald-500 rounded-lg shadow-lg shadow-emerald-500/20">
-                            <Zap size={16} className="text-white" fill="white" />
+            <div className="flex flex-col gap-6 mb-8">
+                <div className="flex flex-col md:flex-row md:items-end justify-between items-start">
+                    <div>
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="p-1.5 bg-emerald-500 rounded-lg shadow-lg shadow-emerald-500/20">
+                                <Zap size={16} className="text-white" fill="white" />
+                            </div>
+                            <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-[0.2em]">Precision Learning</span>
                         </div>
-                        <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-[0.2em]">Precision Learning</span>
+                        <h1 className="text-4xl font-extrabold text-zinc-900 dark:text-white tracking-tight">Return Stack</h1>
+                        <p className="text-zinc-500 dark:text-zinc-400 mt-1 text-sm">Spaced repetition for things that actually matter.</p>
                     </div>
-                    <h1 className="text-4xl font-extrabold text-zinc-900 dark:text-white tracking-tight">Return Stack</h1>
-                    <p className="text-zinc-500 dark:text-zinc-400 mt-1 text-sm">Spaced repetition for things that actually matter.</p>
+                    <div className="mt-4 md:mt-0">
+                        <button onClick={() => setIsModalOpen(true)}
+                            className="px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold rounded-2xl flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl">
+                            <Zap size={18} fill="currentColor" /> Quick Capture
+                        </button>
+                    </div>
                 </div>
-                <button onClick={() => setIsModalOpen(true)}
-                    className="px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold rounded-2xl flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl">
-                    <Zap size={18} fill="currentColor" /> Quick Capture
-                </button>
             </div>
 
             {/* Stats banner */}
-            <div className="mb-6 border border-zinc-800 rounded-2xl overflow-hidden">
+            <div className="mb-6 glass-card overflow-hidden">
                 <FeaturesSectionWithHoverEffects features={[
                     {
                         title: todayCount === 0 ? 'All caught up!' : `${todayCount} Due Today`,
@@ -629,7 +634,7 @@ export function RevisitsView({ initialRevisits }: RevisitsViewProps) {
 
             {/* View mode selector */}
             <div className="flex items-center gap-2 mb-6">
-                <div className="inline-flex bg-zinc-900 border border-zinc-800 rounded-2xl p-1 gap-1">
+                <div className="inline-flex glass-card p-1 gap-1">
                     {(['today', 'all'] as const).map(mode => (
                         <button
                             key={mode}
@@ -702,10 +707,10 @@ export function RevisitsView({ initialRevisits }: RevisitsViewProps) {
 
             {/* ── All mode: table view ── */}
             {viewMode === 'all' && (
-                <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+                <div className="glass-card overflow-hidden w-full">
 
                     {/* Top bar */}
-                    <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800 flex-wrap gap-3">
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 flex-wrap gap-3">
                         <div className="flex items-center gap-3">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-emerald-400" stroke="currentColor" strokeWidth="2">
                                 <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
@@ -815,7 +820,7 @@ export function RevisitsView({ initialRevisits }: RevisitsViewProps) {
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead>
-                                    <tr className="border-b border-zinc-800 text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
+                                    <tr className="border-b border-white/10 text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
                                         <th className="py-3 pl-5 pr-3 w-8">#</th>
                                         <th className="py-3 pr-4">Title</th>
                                         <th className="py-3 pr-4">Type</th>

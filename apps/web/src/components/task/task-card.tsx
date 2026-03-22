@@ -33,7 +33,7 @@ export function TaskCard({ task }: { task: any }) {
             <motion.div
                 layout
                 onClick={() => setIsExpanded(!isExpanded)}
-                className={`group relative overflow-hidden rounded-xl border bg-white p-4 transition-all hover:shadow-md dark:bg-zinc-900 dark:border-zinc-800 cursor-pointer ${isExpanded ? 'ring-2 ring-indigo-500/20' : ''
+                className={`glass-card group relative overflow-hidden p-4 transition-all cursor-pointer ${isExpanded ? 'ring-1 ring-indigo-500/30' : ''
                     }`}
             >
                 <div className="flex items-start gap-4">
@@ -43,14 +43,17 @@ export function TaskCard({ task }: { task: any }) {
                             checked={isCompleted}
                             onChange={toggleComplete}
                             onClick={(e) => e.stopPropagation()}
-                            className="h-5 w-5 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-600 dark:border-zinc-700 dark:bg-zinc-800"
+                            className="h-5 w-5 rounded border-white/30 bg-white/10 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-0 cursor-pointer"
+                            style={{ accentColor: '#6366f1' }}
                         />
                     </div>
 
                     <div className="flex-1 space-y-1">
                         <div className="flex items-center justify-between">
-                            <h3 className={`font-medium text-zinc-900 dark:text-zinc-100 ${isCompleted ? 'line-through text-zinc-500' : ''
-                                }`}>
+                            <h3
+                                className={`font-medium ${isCompleted ? 'line-through' : ''}`}
+                                style={{ color: isCompleted ? 'var(--text-disabled)' : 'var(--text-primary)' }}
+                            >
                                 {task.title}
                             </h3>
                             <div className="flex items-center gap-1.5 flex-wrap">
@@ -69,7 +72,7 @@ export function TaskCard({ task }: { task: any }) {
                                     <span
                                         className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
                                         style={{
-                                            backgroundColor: `${task.categories.color}20`,
+                                            backgroundColor: `${task.categories.color}22`,
                                             color: task.categories.color
                                         }}
                                     >
@@ -80,11 +83,11 @@ export function TaskCard({ task }: { task: any }) {
                         </div>
 
                         {!isExpanded && task.estimated_duration && (
-                            <div className="flex items-center gap-1 text-xs text-zinc-500">
+                            <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
                                 <Clock size={12} />
                                 <span>{task.estimated_duration}m</span>
                                 {task.actual_duration > 0 && (
-                                    <span className="text-indigo-600 dark:text-indigo-400 ml-2">
+                                    <span className="text-indigo-400 ml-2">
                                         (Logged: {Math.round(task.actual_duration / 60)}m)
                                     </span>
                                 )}
@@ -98,12 +101,21 @@ export function TaskCard({ task }: { task: any }) {
                                 e.stopPropagation();
                                 setIsTimerSetupOpen(true);
                             }}
-                            className="rounded-full p-2 text-zinc-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 transition-colors"
+                            className="rounded-full p-2 transition-all"
+                            style={{ color: 'rgba(255,255,255,0.4)' }}
+                            onMouseEnter={e => {
+                                (e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.2)'
+                                ;(e.currentTarget as HTMLElement).style.color = '#818cf8'
+                            }}
+                            onMouseLeave={e => {
+                                (e.currentTarget as HTMLElement).style.background = 'transparent'
+                                ;(e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.4)'
+                            }}
                             title="Start Focus Session"
                         >
                             <Play size={20} />
                         </button>
-                        <div className="text-zinc-400">
+                        <div style={{ color: 'rgba(255,255,255,0.4)' }}>
                             {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                         </div>
                     </div>
@@ -115,15 +127,19 @@ export function TaskCard({ task }: { task: any }) {
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            className="mt-4 border-t pt-4 dark:border-zinc-800"
+                            className="mt-4 border-t pt-4"
+                            style={{ borderColor: 'rgba(255,255,255,0.08)' }}
                         >
                             {task.description && (
-                                <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4 whitespace-pre-wrap">
+                                <p
+                                    className="text-sm mb-4 whitespace-pre-wrap"
+                                    style={{ color: 'var(--text-secondary)' }}
+                                >
                                     {task.description}
                                 </p>
                             )}
 
-                            <div className="flex items-center justify-between text-xs text-zinc-500">
+                            <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-secondary)' }}>
                                 <div className="flex gap-4">
                                     {task.estimated_duration && (
                                         <span className="flex items-center gap-1">
@@ -136,7 +152,7 @@ export function TaskCard({ task }: { task: any }) {
 
                                 <button
                                     onClick={handleDelete}
-                                    className="flex items-center gap-1 text-red-500 hover:text-red-600"
+                                    className="flex items-center gap-1 text-red-400 hover:text-red-300 transition-colors"
                                 >
                                     <Trash2 size={14} />
                                     Delete

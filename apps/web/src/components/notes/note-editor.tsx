@@ -266,7 +266,7 @@ export function NoteEditor({ note, onBack }: NoteEditorProps) {
             className="flex flex-col h-full"
         >
             {/* Top action bar */}
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-100 dark:border-zinc-800/60 bg-white/50 dark:bg-zinc-900/30 backdrop-blur-sm">
+            <div className="flex items-center justify-between px-4 pr-32 py-2.5 border-b border-zinc-100 dark:border-zinc-800/60 bg-white/50 dark:bg-zinc-900/30 backdrop-blur-sm">
                 <div className="flex items-center gap-1">
                     {onBack && (
                         <motion.button

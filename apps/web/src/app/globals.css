@@ -93,6 +93,105 @@
   }
 }
 
+/* ===== Spatial UI / Glassmorphism Design System ===== */
+
+:root {
+  /* Glass component tokens */
+  --glass-card-bg: rgba(12, 12, 18, 0.55);
+  --glass-card-border: rgba(255, 255, 255, 0.12);
+  --glass-card-shadow: 0 8px 32px rgba(0, 0, 0, 0.50);
+  --glass-card-radius: 20px;
+  --glass-blur: blur(12px) saturate(135%);
+
+  /* Sidebar / Topbar glass */
+  --glass-sidebar-bg: rgba(10, 10, 18, 0.20);
+  --glass-sidebar-border: rgba(255, 255, 255, 0.08);
+  --glass-topbar-bg: rgba(10, 10, 18, 0.15);
+
+  /* Modal / overlay glass */
+  --glass-modal-bg: rgba(12, 12, 22, 0.82);
+  --glass-modal-border: rgba(100, 102, 241, 0.18);
+
+  /* Spatial text hierarchy */
+  --text-primary: rgba(255, 255, 255, 0.95);
+  --text-secondary: rgba(255, 255, 255, 0.70);
+  --text-disabled: rgba(255, 255, 255, 0.38);
+  --text-accent: rgba(165, 170, 255, 0.9);
+
+  /* Solid fallback for reduce-transparency mode */
+  --solid-card-bg: #111118;
+  --solid-card-border: rgba(255, 255, 255, 0.10);
+  --solid-sidebar-bg: #0a0a12;
+  --solid-topbar-bg: #0d0d1a;
+}
+
+/* ── Glass utility classes ─────────────────────────────────────────────────── */
+
+.glass-card {
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  background: var(--glass-card-bg);
+  border: 1px solid var(--glass-card-border);
+  border-radius: var(--glass-card-radius);
+  box-shadow: var(--glass-card-shadow);
+}
+
+.glass-sidebar {
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  background: var(--glass-sidebar-bg);
+  border-right: 1px solid var(--glass-sidebar-border);
+}
+
+.glass-modal {
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  background: var(--glass-modal-bg);
+  border: 1px solid var(--glass-modal-border);
+  border-radius: var(--glass-card-radius);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.70), 0 0 0 1px rgba(99, 102, 241, 0.05) inset;
+}
+
+/* ── Reduce Transparency Mode ──────────────────────────────────────────────── */
+
+.reduce-transparency .glass-card {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: var(--solid-card-bg);
+  border-color: var(--solid-card-border);
+}
+
+.reduce-transparency .glass-sidebar {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: var(--solid-sidebar-bg);
+  border-right-color: rgba(255, 255, 255, 0.08);
+}
+
+.reduce-transparency .glass-modal {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: #0e0e1c;
+}
+
+/* ── Mobile performance: reduce blur intensity ─────────────────────────────── */
+
+@media (max-width: 768px) {
+  :root {
+    --glass-blur: blur(6px) saturate(120%);
+  }
+
+  .glass-card {
+    background: rgba(12, 12, 18, 0.65);
+  }
+
+  .glass-sidebar,
+  .glass-topbar {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}
+
 @keyframes fade-spin {
   0% {
     opacity: 0.15;

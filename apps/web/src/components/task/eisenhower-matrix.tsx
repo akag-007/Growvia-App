@@ -70,8 +70,10 @@ function Quadrant({ priorityKey, tasks }: { priorityKey: PriorityValue; tasks: a
         <div
             className="rounded-2xl p-4 flex flex-col min-h-[180px]"
             style={{
-                background: `linear-gradient(145deg, ${meta.bg} 0%, rgba(0,0,0,0.2) 100%)`,
-                border: `1px solid ${meta.color}25`,
+                background: `linear-gradient(145deg, ${meta.bg} 0%, rgba(0,0,0,0.25) 100%)`,
+                border: `1px solid ${meta.color}22`,
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
             }}
         >
             {/* Header */}
@@ -81,7 +83,7 @@ function Quadrant({ priorityKey, tasks }: { priorityKey: PriorityValue; tasks: a
                     <p className="text-xs font-bold leading-tight" style={{ color: meta.color }}>
                         {meta.sublabel}
                     </p>
-                    <p className="text-[10px] text-zinc-500 leading-tight">{meta.label}</p>
+                <p className="text-[10px] leading-tight" style={{ color: 'var(--text-secondary)' }}>{meta.label}</p>
                 </div>
                 <span
                     className="ml-auto text-xs font-bold rounded-full px-2 py-0.5"
@@ -95,7 +97,7 @@ function Quadrant({ priorityKey, tasks }: { priorityKey: PriorityValue; tasks: a
             <div className="flex-1 overflow-y-auto">
                 <AnimatePresence>
                     {tasks.length === 0 ? (
-                        <p className="text-xs text-zinc-600 text-center mt-4">No tasks here</p>
+                        <p className="text-xs text-center mt-4" style={{ color: 'var(--text-disabled)' }}>No tasks here</p>
                     ) : (
                         tasks.map((task) => (
                             <MiniTaskCard key={task.id} task={task} />
@@ -119,8 +121,10 @@ export function EisenhowerMatrix({ tasks }: { tasks: any[] }) {
     return (
         <div className="space-y-6">
             {/* Stats strip */}
-            <div className="flex items-center gap-4 rounded-xl px-4 py-3"
-                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div
+            className="flex items-center gap-4 rounded-xl px-4 py-3"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', backdropFilter: 'blur(12px)' }}
+        >
                 <div className="text-center">
                     <p className="text-lg font-bold text-white">{totalTasks}</p>
                     <p className="text-[10px] text-zinc-500">Total</p>

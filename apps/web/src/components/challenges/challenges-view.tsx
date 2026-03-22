@@ -38,7 +38,7 @@ function CircularProgress({ percent, size = 60, strokeWidth = 5, color = '#8b5cf
                     stroke="currentColor"
                     strokeWidth={strokeWidth}
                     fill="transparent"
-                    className="text-zinc-800"
+                    className="text-white/10"
                 />
                 {/* Progress circle */}
                 <motion.circle
@@ -161,9 +161,9 @@ function ChallengeCard({ challenge, onView, onDelete }: {
 
             {/* Card Content Container */}
             <div className={cn(
-                "relative z-10 w-full h-full bg-zinc-950 rounded-[calc(1rem+0.5px)] p-6 overflow-hidden flex flex-col justify-between",
+                "glass-card relative z-10 w-full h-full rounded-[calc(1rem+0.5px)] p-6 overflow-hidden flex flex-col justify-between",
                 "transition-all duration-300 ease-in-out",
-                "border border-zinc-800/60 group-hover:border-transparent",
+                "group-hover:border-transparent",
                 /* subtle glow on hover via box-shadow */
                 "group-hover:shadow-[0_0_30px_-4px_rgba(139,92,246,0.35),0_0_60px_-12px_rgba(56,189,248,0.2)]"
             )}>
@@ -189,14 +189,15 @@ function ChallengeCard({ challenge, onView, onDelete }: {
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-900/30 text-violet-300 border border-violet-800/40 capitalize">
                             {challenge.trackingUnit}
                         </span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-800 text-zinc-400 border border-zinc-700">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/5 text-white/50 border border-white/10">
                             {challenge.durationDays}d
                         </span>
                     </div>
                 </div>
 
                 {/* 3. Actions: Reveal on Hover */}
-                <div className="absolute -bottom-12 left-0 right-0 p-6 pt-2 opacity-0 transition-all duration-500 group-hover:bottom-0 group-hover:opacity-100 flex items-center justify-between bg-gradient-to-t from-zinc-950 via-zinc-950/90 to-transparent">
+                <div className="absolute -bottom-12 left-0 right-0 p-6 pt-2 opacity-0 transition-all duration-500 group-hover:bottom-0 group-hover:opacity-100 flex items-center justify-between"
+                    style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.3) 60%, transparent 100%)' }}>
                     <div className="flex items-center gap-2">
                         <Button
                             variant="outline"
@@ -249,9 +250,9 @@ function CommunityCard({ c, onJoin }: { c: typeof COMMUNITY_CHALLENGES[0]; onJoi
             animate={{ opacity: 1, y: 0 }}
             onClick={onJoin}
             className={cn(
-                'relative bg-zinc-900 border border-zinc-800 rounded-2xl p-5 cursor-pointer',
+                'glass-card relative p-5 cursor-pointer',
                 'transition-all duration-300 group',
-                'hover:border-zinc-600 hover:shadow-xl hover:-translate-y-0.5',
+                'hover:-translate-y-0.5 hover:shadow-xl',
                 'active:scale-[0.99]',
             )}
         >
@@ -265,24 +266,24 @@ function CommunityCard({ c, onJoin }: { c: typeof COMMUNITY_CHALLENGES[0]; onJoi
                 </div>
                 <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-bold text-white truncate">{c.title}</h3>
-                    <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2">{c.description}</p>
+                    <p className="text-xs mt-0.5 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{c.description}</p>
                 </div>
             </div>
 
             <div className="flex flex-wrap gap-1.5 mb-4">
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-800 text-zinc-400 border border-zinc-700 capitalize">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/5 text-white/50 border border-white/10 capitalize">
                     {c.trackingUnit}
                 </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-800 text-zinc-400 border border-zinc-700">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/5 text-white/50 border border-white/10">
                     {c.durationDays}d
                 </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-800 text-zinc-400 border border-zinc-700 flex items-center gap-1">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/5 text-white/50 border border-white/10 flex items-center gap-1">
                     <Users size={9} /> {c.participants}
                 </span>
             </div>
 
             <div className="flex items-center justify-between">
-                <span className="text-[11px] text-zinc-600 flex items-center gap-1">
+                <span className="text-[11px] flex items-center gap-1" style={{ color: 'var(--text-disabled)' }}>
                     <Flame size={11} style={{ color: c.accent }} /> Popular challenge
                 </span>
                 <span className="flex items-center gap-1 text-[11px] font-semibold transition-colors group-hover:opacity-100 opacity-70"
@@ -373,29 +374,36 @@ export function ChallengesView({ initialChallenges }: { initialChallenges: Chall
     return (
         <div className="pb-20">
             {/* Page header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
-                <div>
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="p-1.5 bg-violet-600 rounded-lg shadow-lg shadow-violet-600/30">
-                            <Zap size={16} className="text-white" fill="white" />
+            <div className="flex flex-col gap-6 mb-8">
+                <div className="flex flex-col md:flex-row md:items-end justify-between items-start">
+                    <div>
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="p-1.5 bg-violet-600 rounded-lg shadow-lg shadow-violet-600/30">
+                                <Zap size={16} className="text-white" fill="white" />
+                            </div>
+                            <span className="text-[10px] font-bold text-violet-400 uppercase tracking-[0.2em]">Goal Tracking</span>
                         </div>
-                        <span className="text-[10px] font-bold text-violet-400 uppercase tracking-[0.2em]">Goal Tracking</span>
+                        <h1 className="text-4xl font-extrabold text-zinc-900 dark:text-white tracking-tight">Challenges</h1>
+                        <p className="text-zinc-500 dark:text-zinc-400 mt-1 text-sm">
+                            Build habits, track streaks, and crush your goals — one cell at a time.
+                        </p>
                     </div>
-                    <h1 className="text-4xl font-extrabold text-zinc-900 dark:text-white tracking-tight">Challenges</h1>
-                    <p className="text-zinc-500 dark:text-zinc-400 mt-1 text-sm">
-                        Build habits, track streaks, and crush your goals — one cell at a time.
-                    </p>
+                    <div className="mt-4 md:mt-0">
+                        <button
+                            onClick={() => setShowCreate(true)}
+                            className="flex items-center gap-2 px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-2xl transition-all shadow-xl shadow-violet-600/25 hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                            <Plus size={18} /> New Challenge
+                        </button>
+                    </div>
                 </div>
-                <button
-                    onClick={() => setShowCreate(true)}
-                    className="flex items-center gap-2 px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-2xl transition-all shadow-xl shadow-violet-600/25 hover:scale-[1.02] active:scale-[0.98]"
-                >
-                    <Plus size={18} /> New Challenge
-                </button>
             </div>
 
             {/* Tab selector */}
-            <div className="inline-flex bg-zinc-900 border border-zinc-800 rounded-2xl p-1 gap-1 mb-6">
+            <div
+                className="inline-flex rounded-2xl p-1 gap-1 mb-6"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
+            >
                 {([
                     { id: 'mine' as Tab, label: 'My Challenges', badge: challenges.length || null },
                     { id: 'community' as Tab, label: 'Community', badge: null },
@@ -407,8 +415,9 @@ export function ChallengesView({ initialChallenges }: { initialChallenges: Chall
                             'relative flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all duration-200',
                             tab === t.id
                                 ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/25'
-                                : 'text-zinc-400 hover:text-white'
+                                : 'hover:text-white'
                         )}
+                        style={{ color: tab === t.id ? undefined : 'var(--text-secondary)' }}
                     >
                         {t.label}
                         {t.badge !== null && (
@@ -448,7 +457,10 @@ export function ChallengesView({ initialChallenges }: { initialChallenges: Chall
 
                 {tab === 'community' && (
                     <motion.div key="community" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                        <div className="bg-violet-950/20 border border-violet-800/30 rounded-2xl px-4 py-3 mb-5 flex items-center gap-2 text-sm text-violet-300">
+                        <div
+                            className="rounded-2xl px-4 py-3 mb-5 flex items-center gap-2 text-sm"
+                            style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)', color: 'rgba(196,181,253,0.9)' }}
+                        >
                             <Flame size={15} className="text-violet-400 flex-shrink-0" />
                             <span>Join a community challenge to clone it into your personal challenges and start tracking.</span>
                         </div>
