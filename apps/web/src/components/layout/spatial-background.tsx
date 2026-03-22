@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { useMemo, useState } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 // Route → background images mapping
 const ROUTE_BACKGROUNDS: Record<string, string[]> = {
@@ -25,8 +25,8 @@ function getDeterministicBackground(pathname: string, arr: string[]): string {
 
 function getBackground(pathname: string): string {
     const segments = pathname.split('/').filter(Boolean)
-    // e.g. /dashboard/challenges → look for "challenges" first
-    for (const seg of segments.reverse()) {
+    // e.g. /dashboard/challenges → prefer the most specific segment (do not mutate `segments`)
+    for (const seg of [...segments].reverse()) {
         if (ROUTE_BACKGROUNDS[seg]) {
             return getDeterministicBackground(pathname, ROUTE_BACKGROUNDS[seg])
         }
@@ -38,8 +38,21 @@ export function SpatialBackground() {
     const pathname = usePathname()
 
     // Stable image per route — recalculate only when pathname changes
-    const imageFile = useMemo(() => getBackground(pathname), [pathname])
+    const imageFile = useMemo(() => getBackground(pathname || '/'), [pathname])
     const [loaded, setLoaded] = useState(false)
+    const imgRef = useRef<HTMLImageElement>(null)
+
+    const markLoaded = useCallback(() => setLoaded(true), [])
+
+    // Reset when the route image changes, then handle cache: `onLoad` often never fires if the
+    // bitmap was ready before React attached the handler (common on full reload of /dashboard).
+    useLayoutEffect(() => {
+        setLoaded(false)
+        const el = imgRef.current
+        if (el?.complete && el.naturalWidth > 0) {
+            markLoaded()
+        }
+    }, [imageFile, markLoaded])
 
     return (
         <div
@@ -49,12 +62,15 @@ export function SpatialBackground() {
         >
             {/* The blurred environment image */}
             <img
+                ref={imgRef}
                 key={imageFile}
                 src={`/backgrounds/${imageFile}`}
                 alt=""
                 loading="eager"
                 decoding="async"
-                onLoad={() => setLoaded(true)}
+                fetchPriority="high"
+                onLoad={markLoaded}
+                onError={markLoaded}
                 style={{
                     position: 'absolute',
                     inset: '-5%',
@@ -64,9 +80,8 @@ export function SpatialBackground() {
                     objectPosition: 'center',
                     filter: 'blur(14px) brightness(0.7)',
                     transform: 'scale(1.05)',
-                    transition: 'opacity 0.8s ease',
+                    transition: 'opacity 0.45s ease',
                     opacity: loaded ? 1 : 0,
-                    // Do not promote to own compositor layer unnecessarily
                 }}
             />
 

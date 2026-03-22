@@ -24,9 +24,21 @@ export async function getCategories() {
     return data
 }
 
+function logSupabaseError(context: string, error: { message?: string; code?: string; details?: string; hint?: string }) {
+    console.error(
+        context,
+        error.message ?? '(no message)',
+        error.code ? `code=${error.code}` : '',
+        error.details ? `details=${error.details}` : '',
+        error.hint ? `hint=${error.hint}` : '',
+    )
+}
+
 export async function getTasks(date?: string) {
     const supabase = await createClient()
 
+    // Nested `projects (...)` requires a registered FK in PostgREST; if migrations are missing it fails.
+    // Fetch tasks + categories, then attach project rows in a second query.
     let query = supabase
         .from('tasks')
         .select(`
@@ -42,14 +54,37 @@ export async function getTasks(date?: string) {
         query = query.eq('due_date', date)
     }
 
-    const { data, error } = await query
+    const { data: tasks, error } = await query
 
     if (error) {
-        console.error('Error fetching tasks:', error)
+        logSupabaseError('Error fetching tasks:', error)
         return []
     }
 
-    return data
+    if (!tasks?.length) {
+        return tasks ?? []
+    }
+
+    const projectIds = [...new Set(tasks.map((t) => t.project_id).filter(Boolean))] as string[]
+    if (projectIds.length === 0) {
+        return tasks
+    }
+
+    const { data: projects, error: projectsError } = await supabase
+        .from('projects')
+        .select('id, name')
+        .in('id', projectIds)
+
+    if (projectsError) {
+        logSupabaseError('Error fetching projects for tasks (tasks still returned without names):', projectsError)
+        return tasks
+    }
+
+    const byId = new Map((projects ?? []).map((p) => [p.id, p]))
+    return tasks.map((t) => ({
+        ...t,
+        projects: t.project_id ? byId.get(t.project_id as string) ?? null : null,
+    }))
 }
 
 export async function createTask(formData: FormData) {

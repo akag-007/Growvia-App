@@ -1,6 +1,7 @@
 'use client'
 
-import { PRIORITY_META, PRIORITY_VALUES, PriorityValue } from '@app/shared'
+import { PRIORITY_META, PriorityValue } from '@app/shared'
+import { glassBackdrop } from '@/lib/glass-tokens'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Clock, AlertCircle } from 'lucide-react'
 
@@ -11,15 +12,7 @@ const PRIORITY_ICONS: Record<PriorityValue, string> = {
     not_important_not_urgent: '⚫',
 }
 
-const QUADRANT_LAYOUT: {
-    key: PriorityValue
-    axisTip: string
-}[] = [
-        { key: 'important_urgent', axisTip: 'Urgent' },
-        { key: 'not_important_urgent', axisTip: 'Urgent' },
-        { key: 'important_not_urgent', axisTip: 'Not Urgent' },
-        { key: 'not_important_not_urgent', axisTip: 'Not Urgent' },
-    ]
+const glassSurface = glassBackdrop
 
 function MiniTaskCard({ task }: { task: any }) {
     const meta = task.priority ? PRIORITY_META[task.priority as PriorityValue] : null
@@ -27,31 +20,46 @@ function MiniTaskCard({ task }: { task: any }) {
         <motion.div
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`rounded-lg px-3 py-2 mb-2 last:mb-0 ${task.is_completed ? 'opacity-50' : ''}`}
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}
+            className={`rounded-xl px-3 py-2.5 mb-2 last:mb-0 ${task.is_completed ? 'opacity-[0.55]' : ''}`}
+            style={{
+                ...glassSurface,
+                background: 'linear-gradient(145deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.03) 100%)',
+                border: '1px solid rgba(255,255,255,0.14)',
+                boxShadow:
+                    '0 4px 24px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.06)',
+            }}
         >
             <div className="flex items-start gap-2">
                 <div
-                    className="mt-0.5 h-3 w-3 shrink-0 rounded-full border"
+                    className="mt-0.5 h-3 w-3 shrink-0 rounded-full border-2"
                     style={{
                         borderColor: meta?.color ?? '#6b7280',
                         background: task.is_completed ? (meta?.color ?? '#6b7280') : 'transparent',
                     }}
                 />
                 <div className="flex-1 min-w-0">
-                    <p className={`text-xs font-medium leading-tight truncate ${task.is_completed ? 'line-through text-zinc-500' : 'text-zinc-100'}`}>
+                    <p
+                        className={`text-[13px] font-semibold leading-snug truncate ${task.is_completed ? 'line-through text-zinc-500' : 'text-zinc-50'}`}
+                        style={{ textShadow: '0 1px 3px rgba(0,0,0,0.55)' }}
+                    >
                         {task.title}
                     </p>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                         {task.estimated_duration && (
-                            <span className="flex items-center gap-0.5 text-zinc-500 text-[10px]">
-                                <Clock size={9} />
+                            <span className="flex items-center gap-0.5 text-zinc-300 text-[11px] font-medium">
+                                <Clock size={10} className="opacity-90" />
                                 {task.estimated_duration}m
                             </span>
                         )}
                         {task.categories && (
-                            <span className="text-[10px] truncate"
-                                style={{ color: task.categories.color }}>
+                            <span
+                                className="text-[11px] font-medium truncate max-w-[10rem] rounded px-1.5 py-0.5"
+                                style={{
+                                    color: task.categories.color,
+                                    background: 'rgba(0,0,0,0.22)',
+                                    border: '1px solid rgba(255,255,255,0.08)',
+                                }}
+                            >
                                 {task.categories.name}
                             </span>
                         )}
@@ -68,36 +76,58 @@ function Quadrant({ priorityKey, tasks }: { priorityKey: PriorityValue; tasks: a
 
     return (
         <div
-            className="rounded-2xl p-4 flex flex-col min-h-[180px]"
+            className="relative flex min-h-[180px] flex-col overflow-hidden rounded-2xl p-4"
             style={{
-                background: `linear-gradient(145deg, ${meta.bg} 0%, rgba(0,0,0,0.25) 100%)`,
-                border: `1px solid ${meta.color}22`,
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
+                ...glassSurface,
+                background: `linear-gradient(165deg, ${meta.bg} 0%, rgba(12, 12, 18, 0.36) 45%, rgba(12, 12, 18, 0.28) 100%)`,
+                border: `1px solid rgba(255, 255, 255, 0.12)`,
+                boxShadow:
+                    '0 12px 40px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.14), inset 0 0 0 1px rgba(255,255,255,0.04)',
             }}
         >
+            {/* Category tint rim — keeps identity without going opaque */}
+            <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 rounded-2xl"
+                style={{
+                    background: `linear-gradient(135deg, ${meta.color}22 0%, transparent 42%, ${meta.color}0f 100%)`,
+                    boxShadow: `inset 0 0 0 1px ${meta.color}33`,
+                }}
+            />
+
             {/* Header */}
-            <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg">{icon}</span>
-                <div>
-                    <p className="text-xs font-bold leading-tight" style={{ color: meta.color }}>
+            <div className="relative z-10 mb-3 flex items-center gap-2">
+                <span className="text-lg drop-shadow-sm">{icon}</span>
+                <div className="min-w-0 flex-1">
+                    <p
+                        className="text-sm font-bold leading-tight tracking-tight"
+                        style={{ color: meta.color, textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}
+                    >
                         {meta.sublabel}
                     </p>
-                <p className="text-[10px] leading-tight" style={{ color: 'var(--text-secondary)' }}>{meta.label}</p>
+                    <p className="text-[11px] leading-snug text-zinc-300/95 mt-0.5 font-medium">
+                        {meta.label}
+                    </p>
                 </div>
                 <span
-                    className="ml-auto text-xs font-bold rounded-full px-2 py-0.5"
-                    style={{ background: `${meta.color}20`, color: meta.color }}
+                    className="ml-auto shrink-0 rounded-full border border-white/15 px-2.5 py-0.5 text-xs font-bold tabular-nums"
+                    style={{
+                        background: 'rgba(255,255,255,0.08)',
+                        color: meta.color,
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12)',
+                    }}
                 >
                     {tasks.length}
                 </span>
             </div>
 
             {/* Task cards */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="relative z-10 flex-1 overflow-y-auto">
                 <AnimatePresence>
                     {tasks.length === 0 ? (
-                        <p className="text-xs text-center mt-4" style={{ color: 'var(--text-disabled)' }}>No tasks here</p>
+                        <p className="mt-6 px-2 text-center text-xs font-medium text-zinc-200/90 drop-shadow-sm">
+                            No tasks here
+                        </p>
                     ) : (
                         tasks.map((task) => (
                             <MiniTaskCard key={task.id} task={task} />
@@ -122,21 +152,30 @@ export function EisenhowerMatrix({ tasks }: { tasks: any[] }) {
         <div className="space-y-6">
             {/* Stats strip */}
             <div
-            className="flex items-center gap-4 rounded-xl px-4 py-3"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', backdropFilter: 'blur(12px)' }}
+            className="flex items-center gap-4 rounded-xl px-4 py-3.5"
+            style={{
+                ...glassSurface,
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(12,12,18,0.38) 100%)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                boxShadow:
+                    '0 8px 32px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.12)',
+            }}
         >
                 <div className="text-center">
-                    <p className="text-lg font-bold text-white">{totalTasks}</p>
-                    <p className="text-[10px] text-zinc-500">Total</p>
+                    <p className="text-lg font-bold text-white drop-shadow-sm">{totalTasks}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Total</p>
                 </div>
-                <div className="h-8 w-px bg-white/10" />
+                <div className="h-8 w-px bg-white/15" />
                 <div className="text-center">
-                    <p className="text-lg font-bold" style={{ color: '#4ade80' }}>{totalDone}</p>
-                    <p className="text-[10px] text-zinc-500">Done</p>
+                    <p className="text-lg font-bold drop-shadow-sm" style={{ color: '#86efac' }}>{totalDone}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Done</p>
                 </div>
-                <div className="h-8 w-px bg-white/10" />
-                <div className="flex-1">
-                    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                <div className="h-8 w-px bg-white/15" />
+                <div className="flex-1 min-w-0">
+                    <div
+                        className="h-1.5 overflow-hidden rounded-full border border-white/10"
+                        style={{ background: 'rgba(0,0,0,0.2)' }}
+                    >
                         <motion.div
                             className="h-full rounded-full"
                             style={{ background: 'linear-gradient(90deg, #4ade80, #22c55e)' }}
@@ -145,7 +184,7 @@ export function EisenhowerMatrix({ tasks }: { tasks: any[] }) {
                             transition={{ duration: 0.6, ease: 'easeOut' }}
                         />
                     </div>
-                    <p className="text-[10px] text-zinc-500 mt-0.5">
+                    <p className="text-[10px] font-medium text-zinc-400 mt-1">
                         {totalTasks > 0 ? Math.round((totalDone / totalTasks) * 100) : 0}% complete
                     </p>
                 </div>
@@ -155,8 +194,8 @@ export function EisenhowerMatrix({ tasks }: { tasks: any[] }) {
             <div className="relative">
                 {/* Column headers */}
                 <div className="grid grid-cols-2 gap-3 mb-1">
-                    <p className="text-center text-xs font-semibold text-zinc-400">🔥 Urgent</p>
-                    <p className="text-center text-xs font-semibold text-zinc-400">📅 Not Urgent</p>
+                    <p className="text-center text-xs font-bold text-zinc-200 tracking-wide drop-shadow-sm">🔥 Urgent</p>
+                    <p className="text-center text-xs font-bold text-zinc-200 tracking-wide drop-shadow-sm">📅 Not Urgent</p>
                 </div>
 
                 {/* 2×2 Grid — arranged as:
@@ -167,7 +206,7 @@ export function EisenhowerMatrix({ tasks }: { tasks: any[] }) {
                     <div className="contents">
                         <div className="relative">
                             {/* Important row label on left */}
-                            <div className="absolute -left-5 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] font-semibold text-zinc-500 whitespace-nowrap origin-center hidden lg:block">
+                            <div className="absolute -left-5 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] font-bold text-zinc-300 whitespace-nowrap origin-center hidden lg:block">
                                 Important
                             </div>
                             <Quadrant priorityKey="important_urgent" tasks={byPriority('important_urgent')} />
@@ -176,7 +215,7 @@ export function EisenhowerMatrix({ tasks }: { tasks: any[] }) {
                     </div>
                     <div className="contents">
                         <div className="relative">
-                            <div className="absolute -left-5 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] font-semibold text-zinc-500 whitespace-nowrap origin-center hidden lg:block">
+                            <div className="absolute -left-5 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] font-bold text-zinc-300 whitespace-nowrap origin-center hidden lg:block">
                                 Not Important
                             </div>
                             <Quadrant priorityKey="not_important_urgent" tasks={byPriority('not_important_urgent')} />
@@ -188,12 +227,21 @@ export function EisenhowerMatrix({ tasks }: { tasks: any[] }) {
 
             {/* Unsorted tasks */}
             {unsorted.length > 0 && (
-                <div className="rounded-2xl p-4"
-                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <div
+                    className="rounded-2xl p-4"
+                    style={{
+                        ...glassSurface,
+                        background:
+                            'linear-gradient(165deg, rgba(251,191,36,0.08) 0%, rgba(12,12,18,0.34) 45%, rgba(12,12,18,0.28) 100%)',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        boxShadow:
+                            '0 12px 40px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.12)',
+                    }}
+                >
                     <div className="flex items-center gap-2 mb-3">
-                        <AlertCircle size={14} className="text-zinc-500" />
-                        <p className="text-xs font-bold text-zinc-500">
-                            Unsorted <span className="ml-1">{unsorted.length}</span>
+                        <AlertCircle size={14} className="text-amber-300/90" />
+                        <p className="text-sm font-bold text-zinc-100">
+                            Unsorted <span className="ml-1 tabular-nums text-zinc-300">{unsorted.length}</span>
                         </p>
                     </div>
                     <div className="grid grid-cols-2 gap-2">

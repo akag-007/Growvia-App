@@ -4,25 +4,48 @@ import NumberFlow from '@number-flow/react'
 import * as RadixSlider from '@radix-ui/react-slider'
 import clsx from 'clsx'
 
-// Grid-optimised slider: value floats above thumb, className overrides width.
-export default function Slider({ value, className, ...props }: RadixSlider.SliderProps) {
+type SliderProps = RadixSlider.SliderProps & {
+    /** When false, the animated value label is not shown above the thumb (avoids overlap with row labels like "Progress"). */
+    showValueOnThumb?: boolean
+    trackClassName?: string
+    rangeClassName?: string
+    thumbClassName?: string
+}
+
+// Grid-optimised slider: value floats above thumb unless showValueOnThumb is false; className overrides width.
+export default function Slider({
+    value,
+    className,
+    showValueOnThumb = true,
+    trackClassName,
+    rangeClassName,
+    thumbClassName,
+    ...props
+}: SliderProps) {
     return (
         <RadixSlider.Root
             {...props}
             value={value}
             className={clsx(
-                'relative flex h-5 touch-none select-none items-center',
-                className ?? 'w-[200px]',
+                'relative flex touch-none select-none items-center py-0.5',
+                className ?? 'h-6 w-[200px]',
             )}
         >
-            <RadixSlider.Track className="relative h-[3px] grow rounded-full bg-zinc-700">
-                <RadixSlider.Range className="absolute h-full rounded-full bg-violet-500" />
+            <RadixSlider.Track
+                className={clsx('relative h-[3px] grow rounded-full bg-zinc-700', trackClassName)}
+            >
+                <RadixSlider.Range
+                    className={clsx('absolute h-full rounded-full bg-violet-500', rangeClassName)}
+                />
             </RadixSlider.Track>
             <RadixSlider.Thumb
-                className="relative block h-4 w-4 rounded-full bg-white shadow-md ring-2 ring-violet-500 focus:outline-none"
+                className={clsx(
+                    'relative block h-4 w-4 rounded-full bg-white shadow-md ring-2 ring-violet-500 focus:outline-none',
+                    thumbClassName,
+                )}
                 aria-label="value"
             >
-                {value?.[0] != null && (
+                {showValueOnThumb && value?.[0] != null && (
                     <NumberFlow
                         willChange
                         value={value[0]}
