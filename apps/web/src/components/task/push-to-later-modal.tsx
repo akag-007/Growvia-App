@@ -20,9 +20,9 @@ export function PushToLaterModal({ taskId, taskTitle, onClose }: PushToLaterModa
 
         // Import updateTask dynamically to avoid circular dependency
         const { updateTask } = await import('@/actions/task')
-        
-        const result = await updateTask(taskId, { 
-            due_date: selectedDate 
+
+        const result = await updateTask(taskId, {
+            due_date: selectedDate
         })
 
         setIsSubmitting(false)
@@ -30,15 +30,6 @@ export function PushToLaterModal({ taskId, taskTitle, onClose }: PushToLaterModa
             onClose()
         }
     }
-
-    const today = new Date().toISOString().split('T')[0]
-    
-    // Generate next 7 days options
-    const dateOptions = Array.from({ length: 7 }, (_, i) => {
-        const date = new Date()
-        date.setDate(date.getDate() + i + 1)
-        return date.toISOString().split('T')[0]
-    })
 
     return (
         <motion.div
@@ -94,52 +85,16 @@ export function PushToLaterModal({ taskId, taskTitle, onClose }: PushToLaterModa
                         <label className="block text-sm font-semibold mb-3 text-indigo-400">
                             Select New Due Date
                         </label>
-                        <div className="space-y-2">
-                            {dateOptions.map((date) => (
-                                <label
-                                    key={date}
-                                    className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all hover:bg-white/5"
-                                    style={{
-                                        background: selectedDate === date 
-                                            ? 'rgba(99,102,241,0.2)' 
-                                            : 'rgba(255,255,255,0.03)',
-                                        border: selectedDate === date 
-                                            ? '1px solid rgba(99,102,241,0.4)' 
-                                            : '1px solid rgba(255,255,255,0.08)',
-                                    }}
-                                >
-                                    <input
-                                        type="radio"
-                                        name="dueDate"
-                                        value={date}
-                                        checked={selectedDate === date}
-                                        onChange={(e) => setSelectedDate(e.target.value)}
-                                        className="hidden"
-                                    />
-                                    <div className="flex-1">
-                                        <p className="text-white font-medium">
-                                            {new Date(date).toLocaleDateString('en-US', { 
-                                                weekday: 'long', 
-                                                month: 'short', 
-                                                day: 'numeric' 
-                                            })}
-                                        </p>
-                                        <p className="text-xs text-zinc-500">
-                                            {new Date(date).toLocaleDateString('en-US', { 
-                                                month: 'long', 
-                                                day: 'numeric', 
-                                                year: 'numeric' 
-                                            })}
-                                        </p>
-                                    </div>
-                                    {selectedDate === date && (
-                                        <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center">
-                                            <div className="w-2 h-2 rounded-full bg-white" />
-                                        </div>
-                                    )}
-                                </label>
-                            ))}
-                        </div>
+                        <input
+                            type="date"
+                            value={selectedDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            min={new Date().toISOString().split('T')[0]}
+                            className="w-full px-4 py-3 rounded-xl text-white bg-white/5 border border-white/10 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            style={{
+                                colorScheme: 'dark',
+                            }}
+                        />
                     </div>
 
                     <div className="flex gap-3 pt-1 pb-2">
@@ -161,7 +116,7 @@ export function PushToLaterModal({ taskId, taskTitle, onClose }: PushToLaterModa
                                 boxShadow: '0 4px 15px rgba(99,102,241,0.35)',
                             }}
                         >
-                            {isSubmitting ? 'Moving...' : 'Push to Later'}
+                            {isSubmitting ? 'Moving...' : 'Push Task'}
                         </button>
                     </div>
                 </form>

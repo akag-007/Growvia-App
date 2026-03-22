@@ -50,3 +50,4 @@ supabase/.temp
 # Agent & Skills
 .agent/
 .agents/
+.claude/
