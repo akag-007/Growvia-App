@@ -29,7 +29,11 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.1",
     "zod": "^3.25.76",
-    "zustand": "^5.0.11"
+    "zustand": "^5.0.11",
+    "lightningcss": "^1.29.2"
+  },
+  "optionalDependencies": {
+    "lightningcss-linux-x64-gnu": "^1.29.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
