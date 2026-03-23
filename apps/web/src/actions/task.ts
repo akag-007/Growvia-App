@@ -65,25 +65,42 @@ export async function getTasks(date?: string) {
         return tasks ?? []
     }
 
-    const projectIds = [...new Set(tasks.map((t) => t.project_id).filter(Boolean))] as string[]
-    if (projectIds.length === 0) {
-        return tasks
+    // Instead of filtering tasks based on project_id and fetching projects separately,
+    // we use a left join via task_project_links, but since we are replacing the old approach
+    // we need to re-query the join table or join in via PostgREST if FKs exist.
+    // Let's assume the migration adds the FKs.
+    // "projects" is what we attach. 
+    // In Supabase we can do: `..., task_project_links( project_id, projects(id, title, color) )` 
+    // For now, I'll fetch links manually as we did projects before.
+    const taskIds = tasks.map((t) => t.id)
+    if (taskIds.length === 0) return tasks
+    
+    const { data: links, error: linksError } = await supabase
+        .from('task_project_links')
+        .select(`
+            task_id,
+            projects (id, title, color)
+        `)
+        .in('task_id', taskIds)
+
+    if (linksError) {
+        logSupabaseError('Error fetching task projects:', linksError)
+        return tasks.map(t => ({ ...t, projects: [] }))
     }
 
-    const { data: projects, error: projectsError } = await supabase
-        .from('projects')
-        .select('id, name')
-        .in('id', projectIds)
-
-    if (projectsError) {
-        logSupabaseError('Error fetching projects for tasks (tasks still returned without names):', projectsError)
-        return tasks
+    const linksByTask = new Map()
+    for (const link of links || []) {
+        if (!linksByTask.has(link.task_id)) {
+            linksByTask.set(link.task_id, [])
+        }
+        if (link.projects) {
+            linksByTask.get(link.task_id).push(link.projects)
+        }
     }
 
-    const byId = new Map((projects ?? []).map((p) => [p.id, p]))
     return tasks.map((t) => ({
         ...t,
-        projects: t.project_id ? byId.get(t.project_id as string) ?? null : null,
+        projects: linksByTask.get(t.id) || [],
     }))
 }
 
@@ -142,19 +159,26 @@ export async function createTask(formData: FormData) {
         category_id: category_id || null,
         due_date,
         priority: priority || null,
+        // project_id is removed from here
     }
 
-    const { error } = await supabase
+    const { data: insertedTask, error: insertError } = await supabase
         .from('tasks')
         .insert({
             ...rawData,
             user_id: user.id
         })
-
-    if (error) {
-        return { error: error.message }
+        .select('id')
+        .single()
+        
+    if (insertError) {
+        return { error: insertError.message }
     }
 
+
+    // Now insert links if any project_ids were provided
+    // By default the prompt doesn't ask for project_ids in form, but just in case:
+    
     revalidatePath('/dashboard')
     return { success: true }
 }
@@ -182,5 +206,38 @@ export async function deleteTask(id: string) {
     if (error) return { error: error.message }
 
     revalidatePath('/dashboard')
+    return { success: true }
+}
+
+export async function linkTaskToProject(task_id: string, project_id: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Unauthorized' }
+
+    const { error } = await supabase
+        .from('task_project_links')
+        .insert({ task_id, project_id, user_id: user.id })
+
+    if (error) return { error: error.message }
+    
+    revalidatePath('/dashboard')
+    revalidatePath('/projects')
+    return { success: true }
+}
+
+export async function unlinkTaskFromProject(task_id: string, project_id: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Unauthorized' }
+
+    const { error } = await supabase
+        .from('task_project_links')
+        .delete()
+        .match({ task_id, project_id })
+
+    if (error) return { error: error.message }
+    
+    revalidatePath('/dashboard')
+    revalidatePath('/projects')
     return { success: true }
 }

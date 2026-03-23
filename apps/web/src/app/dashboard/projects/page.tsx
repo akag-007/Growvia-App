@@ -1,15 +1,32 @@
+import { Suspense } from 'react'
+import { getProjects } from '@/actions/project'
+import { ProjectListClient } from './project-list-client'
 import { Layers } from 'lucide-react'
 
-export default function ProjectsPage() {
+export const metadata = {
+    title: 'Projects | Dashboard',
+}
+
+export default async function ProjectsPage() {
+    const projects = await getProjects()
+
     return (
-        <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4">
-            <div className="p-4 rounded-full bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400">
-                <Layers size={48} />
-            </div>
-            <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Projects</h2>
-            <p className="text-zinc-500 max-w-md">
-                Manage your long-term goals and break them down into actionable tasks. Coming soon.
-            </p>
+        <div className="mx-auto w-full max-w-5xl space-y-6 px-4 pb-20 pt-16 sm:px-6 md:pt-20">
+            <header className="mb-8">
+                <div className="mb-4 inline-flex items-center justify-center rounded-2xl bg-indigo-500/10 p-3 shadow-inner ring-1 ring-inset ring-indigo-500/20">
+                    <Layers className="h-6 w-6 text-indigo-400" />
+                </div>
+                <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+                    Long-Term Projects
+                </h1>
+                <p className="mt-2 text-base text-zinc-400 max-w-2xl">
+                    Link your daily tasks to broader goals. Track overall completion, total time spent, and approaching deadlines.
+                </p>
+            </header>
+
+            <Suspense fallback={<div className="text-zinc-500 animate-pulse">Loading projects...</div>}>
+                <ProjectListClient initialProjects={projects} />
+            </Suspense>
         </div>
     )
 }

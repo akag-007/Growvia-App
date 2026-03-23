@@ -15,6 +15,7 @@ import {
     Link2,
     CheckSquare,
     Square,
+    X,
 } from 'lucide-react'
 import { PRIORITY_META, PriorityValue } from '@app/shared'
 import { glassBackdrop } from '@/lib/glass-tokens'
@@ -23,6 +24,8 @@ import Slider from '@/components/ui/slider-number-flow'
 import { TimerSetupModal } from '@/components/timer/timer-setup-modal'
 import { PushToLaterModal } from './push-to-later-modal'
 import { EditTaskModal } from './edit-task-modal'
+import { LinkProjectModal } from './link-project-modal'
+import { unlinkTaskFromProject } from '@/actions/task'
 
 function formatEstimatedMins(mins: number) {
     if (mins >= 60) {
@@ -70,6 +73,7 @@ export function TaskCard({ task }: { task: any }) {
     const [isTimerSetupOpen, setIsTimerSetupOpen] = useState(false)
     const [isPushToLaterOpen, setIsPushToLaterOpen] = useState(false)
     const [isEditOpen, setIsEditOpen] = useState(false)
+    const [isLinkProjectOpen, setIsLinkProjectOpen] = useState(false)
     const [progress, setProgress] = useState(task.progress ?? 0)
     const [completed, setCompleted] = useState(!!task.is_completed)
 
@@ -118,7 +122,8 @@ export function TaskCard({ task }: { task: any }) {
             !isExpanded ||
             isTimerSetupOpen ||
             isPushToLaterOpen ||
-            isEditOpen
+            isEditOpen ||
+            isLinkProjectOpen
         ) {
             return
         }
@@ -129,7 +134,7 @@ export function TaskCard({ task }: { task: any }) {
         }
         document.addEventListener('pointerdown', handlePointerDown, true)
         return () => document.removeEventListener('pointerdown', handlePointerDown, true)
-    }, [isExpanded, isTimerSetupOpen, isPushToLaterOpen, isEditOpen])
+    }, [isExpanded, isTimerSetupOpen, isPushToLaterOpen, isEditOpen, isLinkProjectOpen])
 
     return (
         <>
@@ -347,6 +352,17 @@ export function TaskCard({ task }: { task: any }) {
                             type="button"
                             onClick={(e) => {
                                 e.stopPropagation()
+                                setIsLinkProjectOpen(true)
+                            }}
+                            className={iconBtn}
+                            title="Link to project"
+                        >
+                            <Link2 size={17} strokeWidth={1.75} />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation()
                                 setIsEditOpen(true)
                             }}
                             className={iconBtn}
@@ -405,12 +421,32 @@ export function TaskCard({ task }: { task: any }) {
                                     />
                                 </div>
 
-                                {project?.name && (
-                                    <div className="flex items-center justify-between border-t border-white/[0.08] pt-3">
+                                {task.projects && task.projects.length > 0 && (
+                                    <div className="flex flex-col gap-2 border-t border-white/[0.08] pt-3">
                                         <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-emerald-400">
                                             <Link2 size={16} className="shrink-0 opacity-90" />
-                                            <span className="truncate">Linked to: {project.name}</span>
-                                            <ChevronRight size={16} className="shrink-0 opacity-70" />
+                                            <span>Linked Projects:</span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {task.projects.map((proj: any) => (
+                                                <div key={proj.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/5 border border-white/10">
+                                                    <div 
+                                                        className="w-2 h-2 rounded-full" 
+                                                        style={{ backgroundColor: proj.color || '#10b981' }} 
+                                                    />
+                                                    <span className="text-xs text-zinc-300">{proj.title || proj.name}</span>
+                                                    <button 
+                                                        onClick={async (e) => {
+                                                            e.stopPropagation()
+                                                            await unlinkTaskFromProject(task.id, proj.id)
+                                                        }}
+                                                        className="ml-1 text-zinc-500 hover:text-red-400 transition-colors"
+                                                        title="Unlink"
+                                                    >
+                                                        <X size={12} />
+                                                    </button>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 )}
@@ -499,6 +535,16 @@ export function TaskCard({ task }: { task: any }) {
             <AnimatePresence>
                 {isEditOpen && (
                     <EditTaskModal task={task} onClose={() => setIsEditOpen(false)} />
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {isLinkProjectOpen && (
+                    <LinkProjectModal
+                        taskId={task.id}
+                        taskTitle={task.title}
+                        onClose={() => setIsLinkProjectOpen(false)}
+                    />
                 )}
             </AnimatePresence>
         </>

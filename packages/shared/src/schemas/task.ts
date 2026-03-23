@@ -60,6 +60,8 @@ export const updateTaskSchema = z.object({
     category_id: z.string().uuid().nullable().optional(),
     due_date: z.string().optional(),
     priority: z.enum(PRIORITY_VALUES).optional().nullable(),
+    project_ids: z.array(z.string().uuid()).optional(), // To allow linking projects on update
+
 });
 
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
