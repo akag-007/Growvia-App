@@ -5,6 +5,8 @@ import { SpatialBackground } from '@/components/layout/spatial-background'
 import { TransparencyProvider } from '@/components/theme/transparency-context'
 import { createClient } from '@/utils/supabase/server'
 
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardLayout({
     children,
 }: {
