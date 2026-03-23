@@ -90,7 +90,7 @@ export default function NotesClientView({ initialNotes }: NotesClientViewProps) 
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="flex items-center justify-between gap-4 px-6 lg:px-8 pt-6 lg:pt-8"
+                        className="flex items-center justify-between gap-4 px-6 lg:px-8 pt-24 lg:pt-24"
                     >
                         {/* Search bar */}
                         <div className="relative flex-1 max-w-md">
