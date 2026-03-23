@@ -3,6 +3,8 @@ import { createClient } from '@/utils/supabase/server'
 import { getNotes } from '@/actions/notes'
 import NotesClientView from './client-view'
 
+export const dynamic = 'force-dynamic';
+
 export default async function NotesPage() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
