@@ -2,178 +2,240 @@
 
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Sparkles } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import type { Note } from '@/actions/notes'
+import { Plus, Sparkles, Trash2, EyeOff, Eye } from 'lucide-react'
+import { deleteNote, updateNote } from '@/actions/notes'
 import { useNotesStore } from '@/stores/notes'
+import type { Note } from '@/actions/notes'
 
-interface SpatialGridProps {
+interface GalleryGridProps {
     notes: Note[]
-    activeNoteId: string | null
     onNoteClick: (noteId: string) => void
     onCreateNote: () => void
-    isEditorMode: boolean
 }
 
-export function SpatialGrid({ notes, activeNoteId, onNoteClick, onCreateNote, isEditorMode }: SpatialGridProps) {
-    // Get color-based tint classes for glassmorphic effect
-    const getGlassColorClass = (note: Note) => {
-        const baseClass = 'backdrop-blur-md bg-black/40 border-white/10 hover:bg-black/50'
-        return baseClass
+function formatDate(dateString: string) {
+    const d = new Date(dateString)
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+export function GalleryGrid({ notes, onNoteClick, onCreateNote }: GalleryGridProps) {
+    const { removeNote, updateNoteLocal } = useNotesStore()
+
+    const handleDelete = async (e: React.MouseEvent, noteId: string) => {
+        e.stopPropagation()
+        if (!confirm('Delete this note permanently?')) return
+        removeNote(noteId)
+        await deleteNote(noteId)
     }
 
-    const variants = {
-        grid: {
-            initial: { opacity: 0, scale: 0.8, y: 20 },
-            animate: { opacity: 1, scale: 1, y: 0 },
-            exit: { opacity: 0, scale: 0.8, y: -20 },
-        },
-        sidebar: {
-            initial: { opacity: 0, x: -20 },
-            animate: { opacity: 1, x: 0 },
-            exit: { opacity: 0, x: -20 },
-        },
-    }
-
-    // Calculate grid positions for spatial effect
-    const getGridPosition = (index: number) => {
-        const positions = [
-            { col: 'col-span-2', row: 'row-span-2' }, // Large card
-            { col: 'col-span-1', row: 'row-span-1' },
-            { col: 'col-span-1', row: 'row-span-1' },
-            { col: 'col-span-1', row: 'row-span-1' },
-            { col: 'col-span-1', row: 'row-span-1' },
-            { col: 'col-span-2', row: 'row-span-1' },
-        ]
-        return positions[index % positions.length]
+    const handleToggleHide = async (e: React.MouseEvent, note: Note) => {
+        e.stopPropagation()
+        const next = !note.is_archived
+        updateNoteLocal(note.id, { is_archived: next })
+        await updateNote(note.id, { is_archived: next })
     }
 
     return (
         <AnimatePresence mode="wait">
-            {!isEditorMode ? (
-                <motion.div
-                    key="grid"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="absolute inset-0 p-8 overflow-y-auto"
-                >
-                    {/* Header */}
-                    <div className="mb-8 flex items-center justify-between">
-                        <div>
-                            <h1 className="text-3xl font-bold text-white/90 mb-1 flex items-center gap-2">
-                                <Sparkles className="w-6 h-6 text-amber-400" />
-                                Notes
-                            </h1>
-                            <p className="text-white/50 text-sm">Your thoughts, beautifully scattered</p>
+            <motion.div
+                key="gallery"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="h-full overflow-y-auto p-6 lg:p-8"
+            >
+                {notes.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
+                        {notes.map((note, index) => {
+                            const preview = note.content.slice(0, 140).replace(/\s+/g, ' ').trim()
+                            const isHidden = note.is_archived
+
+                            return (
+                                <motion.div
+                                    key={note.id}
+                                    initial={{ opacity: 0, y: 16 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.3, delay: index * 0.04 }}
+                                    onClick={() => onNoteClick(note.id)}
+                                    whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                                    className="relative rounded-2xl p-5 cursor-pointer group overflow-hidden"
+                                    style={{
+                                        background: isHidden
+                                            ? 'rgba(30, 40, 50, 0.55)'
+                                            : 'rgba(30, 50, 45, 0.45)',
+                                        backdropFilter: 'blur(20px) saturate(130%)',
+                                        WebkitBackdropFilter: 'blur(20px) saturate(130%)',
+                                        border: `1px solid ${isHidden ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.08)'}`,
+                                        boxShadow: '0 8px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.06)',
+                                        minHeight: '220px',
+                                        opacity: isHidden ? 0.65 : 1,
+                                    }}
+                                >
+                                    {/* Hover glow */}
+                                    <div
+                                        className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                                        style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 60%)' }}
+                                    />
+
+                                    {/* Action buttons — top right, visible on hover */}
+                                    <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20">
+                                        <button
+                                            onClick={(e) => handleToggleHide(e, note)}
+                                            className="p-1.5 rounded-lg transition-all duration-150 hover:scale-110"
+                                            style={{
+                                                background: 'rgba(0,0,0,0.45)',
+                                                backdropFilter: 'blur(8px)',
+                                                border: '1px solid rgba(255,255,255,0.08)',
+                                            }}
+                                            title={isHidden ? 'Unhide note' : 'Hide note'}
+                                        >
+                                            {isHidden
+                                                ? <Eye size={13} className="text-teal-400" />
+                                                : <EyeOff size={13} className="text-white/50 hover:text-white/80" />
+                                            }
+                                        </button>
+                                        <button
+                                            onClick={(e) => handleDelete(e, note.id)}
+                                            className="p-1.5 rounded-lg transition-all duration-150 hover:scale-110"
+                                            style={{
+                                                background: 'rgba(0,0,0,0.45)',
+                                                backdropFilter: 'blur(8px)',
+                                                border: '1px solid rgba(255,255,255,0.08)',
+                                            }}
+                                            title="Delete note"
+                                        >
+                                            <Trash2 size={13} className="text-white/50 hover:text-red-400" />
+                                        </button>
+                                    </div>
+
+                                    {/* Hidden badge */}
+                                    {isHidden && (
+                                        <span className="absolute top-3 left-3 z-20 text-[8px] font-bold tracking-widest uppercase text-white/30 px-1.5 py-0.5 rounded bg-white/[0.06]">
+                                            Hidden
+                                        </span>
+                                    )}
+
+                                    {/* Pinned badge */}
+                                    {note.is_pinned && !isHidden && (
+                                        <span
+                                            className="relative z-10 inline-block text-[9px] font-bold tracking-[0.15em] uppercase px-2 py-0.5 rounded-md mb-3"
+                                            style={{
+                                                background: 'rgba(245, 158, 11, 0.2)',
+                                                color: 'rgba(252, 211, 77, 0.9)',
+                                            }}
+                                        >
+                                            PINNED
+                                        </span>
+                                    )}
+
+                                    {/* Title */}
+                                    <h3
+                                        className="relative z-10 font-semibold leading-tight mb-3 line-clamp-3"
+                                        style={{
+                                            fontFamily: '"Newsreader", "Georgia", serif',
+                                            fontSize: 'clamp(1rem, 2.5vw, 1.25rem)',
+                                            color: isHidden ? 'rgba(255,255,255,0.50)' : 'rgba(255,255,255,0.88)',
+                                            marginTop: isHidden ? '28px' : undefined,
+                                        }}
+                                    >
+                                        {note.title || 'Untitled'}
+                                    </h3>
+
+                                    {/* Preview text */}
+                                    {preview && (
+                                        <p
+                                            className="relative z-10 text-[12px] leading-relaxed line-clamp-3 mb-4"
+                                            style={{ color: isHidden ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.50)' }}
+                                        >
+                                            {preview}
+                                        </p>
+                                    )}
+
+                                    {/* Spacer */}
+                                    <div className="flex-1" />
+
+                                    {/* Date */}
+                                    <p
+                                        className="relative z-10 text-[10px] mt-auto"
+                                        style={{ color: 'rgba(255,255,255,0.28)' }}
+                                    >
+                                        {formatDate(note.updated_at)}
+                                    </p>
+                                </motion.div>
+                            )
+                        })}
+
+                        {/* "Capture a new thought" card */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 16 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: notes.length * 0.04 }}
+                            onClick={onCreateNote}
+                            whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                            className="relative rounded-2xl p-5 cursor-pointer flex flex-col items-center justify-center text-center group"
+                            style={{
+                                background: 'rgba(30, 50, 45, 0.25)',
+                                backdropFilter: 'blur(16px)',
+                                WebkitBackdropFilter: 'blur(16px)',
+                                border: '1px dashed rgba(255,255,255,0.12)',
+                                minHeight: '220px',
+                            }}
+                        >
+                            <motion.div
+                                whileHover={{ scale: 1.1 }}
+                                className="w-12 h-12 rounded-full flex items-center justify-center mb-4"
+                                style={{
+                                    background: 'linear-gradient(135deg, rgba(20,184,166,0.3), rgba(13,148,136,0.2))',
+                                    border: '1px solid rgba(20,184,166,0.3)',
+                                }}
+                            >
+                                <Plus size={22} className="text-teal-400" />
+                            </motion.div>
+                            <p
+                                className="text-sm"
+                                style={{
+                                    fontFamily: '"Newsreader", "Georgia", serif',
+                                    color: 'rgba(255,255,255,0.40)',
+                                }}
+                            >
+                                Capture a new thought
+                            </p>
+                        </motion.div>
+                    </div>
+                ) : (
+                    /* Empty state */
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex flex-col items-center justify-center h-[60vh]"
+                    >
+                        <div className="w-24 h-24 rounded-full bg-white/5 backdrop-blur-sm flex items-center justify-center mb-6">
+                            <Sparkles size={48} className="text-white/30" />
                         </div>
+                        <h3
+                            className="text-xl font-semibold text-white/70 mb-2"
+                            style={{ fontFamily: '"Newsreader", "Georgia", serif' }}
+                        >
+                            No notes yet
+                        </h3>
+                        <p className="text-white/40 text-sm mb-6">Create your first note to get started</p>
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={onCreateNote}
-                            className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-medium shadow-lg shadow-emerald-500/30 flex items-center gap-2"
+                            className="px-6 py-3 text-white rounded-xl font-medium shadow-lg flex items-center gap-2"
+                            style={{
+                                background: 'linear-gradient(135deg, #14b8a6, #0d9488)',
+                                boxShadow: '0 4px 20px rgba(20,184,166,0.35)',
+                            }}
                         >
                             <Plus size={18} />
-                            New Note
+                            Create First Note
                         </motion.button>
-                    </div>
-
-                    {/* Grid Layout */}
-                    {notes.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                            {notes.map((note, index) => {
-                                const position = getGridPosition(index)
-                                const isActive = activeNoteId === note.id
-                                const preview = note.content.slice(0, 100).replace(/[#*_~`>\[\]]/g, '')
-
-                                return (
-                                    <motion.div
-                                        key={note.id}
-                                        {...variants.grid}
-                                        transition={{ duration: 0.3, delay: index * 0.05 }}
-                                        className={cn(
-                                            'relative rounded-2xl p-5 cursor-pointer',
-                                            'transition-all duration-300',
-                                            'hover:shadow-2xl hover:shadow-black/50 hover:scale-[1.02]',
-                                            'hover:border-white/20',
-                                            getGlassColorClass(note),
-                                            'border backdrop-blur-md',
-                                            position.col,
-                                            position.row,
-                                            isActive && 'ring-2 ring-emerald-400/50 shadow-lg shadow-emerald-500/20'
-                                        )}
-                                        onClick={() => onNoteClick(note.id)}
-                                        whileHover={{ y: -4 }}
-                                    >
-                                        {/* Glow effect on hover */}
-                                        <div className={cn(
-                                            'absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100',
-                                            'transition-opacity duration-300',
-                                            'bg-gradient-to-br from-white/5 to-transparent'
-                                        )} />
-
-                                        {/* Header */}
-                                        <div className="flex items-start justify-between mb-3 relative z-10">
-                                            <h3 className={cn(
-                                                'font-semibold text-lg leading-tight',
-                                                isActive ? 'text-emerald-400' : 'text-white/90'
-                                            )}>
-                                                {note.title || 'Untitled'}
-                                            </h3>
-                                            {note.is_pinned && (
-                                                <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                                            )}
-                                        </div>
-
-                                        {/* Preview */}
-                                        {preview && (
-                                            <p className={cn(
-                                                'text-sm leading-relaxed line-clamp-4',
-                                                'text-white/60',
-                                                'relative z-10'
-                                            )}>
-                                                {preview}
-                                            </p>
-                                        )}
-
-                                        {/* Date */}
-                                        <div className="mt-4 pt-3 border-t border-white/10">
-                                            <span className="text-xs text-white/40">
-                                                {new Date(note.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                            </span>
-                                        </div>
-
-                                        {/* Decorative gradient */}
-                                        <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500/10 to-teal-500/10 blur-2xl" />
-                                    </motion.div>
-                                )
-                            })}
-                        </div>
-                    ) : (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="flex flex-col items-center justify-center h-[60vh]"
-                        >
-                            <div className="w-24 h-24 rounded-full bg-white/5 backdrop-blur-sm flex items-center justify-center mb-6">
-                                <Sparkles size={48} className="text-white/30" />
-                            </div>
-                            <h3 className="text-xl font-semibold text-white/70 mb-2">No notes yet</h3>
-                            <p className="text-white/40 text-sm mb-6">Create your first note to get started</p>
-                            <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={onCreateNote}
-                                className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-medium shadow-lg shadow-emerald-500/30 flex items-center gap-2"
-                            >
-                                <Plus size={18} />
-                                Create First Note
-                            </motion.button>
-                        </motion.div>
-                    )}
-                </motion.div>
-            ) : null}
+                    </motion.div>
+                )}
+            </motion.div>
         </AnimatePresence>
     )
 }

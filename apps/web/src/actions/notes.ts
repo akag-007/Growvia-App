@@ -24,7 +24,6 @@ export async function getNotes(): Promise<Note[]> {
     const { data, error } = await supabase
         .from('notes')
         .select('*')
-        .eq('is_archived', false)
         .order('is_pinned', { ascending: false })
         .order('updated_at', { ascending: false })
 

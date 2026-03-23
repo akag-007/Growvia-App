@@ -10,6 +10,7 @@ interface NotesState {
     viewMode: ViewMode
     isSaving: boolean
     isEditorPreview: boolean
+    showHidden: boolean
 
     // Actions
     setNotes: (notes: Note[]) => void
@@ -18,6 +19,7 @@ interface NotesState {
     setViewMode: (mode: ViewMode) => void
     setIsSaving: (saving: boolean) => void
     setIsEditorPreview: (preview: boolean) => void
+    toggleShowHidden: () => void
 
     // Derived helpers
     getActiveNote: () => Note | undefined
@@ -36,6 +38,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     viewMode: 'list',
     isSaving: false,
     isEditorPreview: false,
+    showHidden: false,
 
     setNotes: (notes) => set({ notes }),
     setActiveNoteId: (id) => set({ activeNoteId: id }),
@@ -43,6 +46,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     setViewMode: (mode) => set({ viewMode: mode }),
     setIsSaving: (saving) => set({ isSaving: saving }),
     setIsEditorPreview: (preview) => set({ isEditorPreview: preview }),
+    toggleShowHidden: () => set((state) => ({ showHidden: !state.showHidden })),
 
     getActiveNote: () => {
         const { notes, activeNoteId } = get()
