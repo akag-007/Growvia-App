@@ -1,15 +1,16 @@
-import { Trophy } from 'lucide-react'
+import { redirect } from 'next/navigation'
+import { createClient } from '@/utils/supabase/server'
+import ClientView from './client-view'
 
-export default function GamificationPage() {
-    return (
-        <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4">
-            <div className="p-4 rounded-full bg-yellow-100 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400">
-                <Trophy size={48} />
-            </div>
-            <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Gamification</h2>
-            <p className="text-zinc-500 max-w-md">
-                Track your XP, streaks, and level up your productivity. Coming soon.
-            </p>
-        </div>
-    )
+export const dynamic = 'force-dynamic';
+
+export default async function GamificationPage() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        redirect('/login')
+    }
+
+    return <ClientView />
 }
