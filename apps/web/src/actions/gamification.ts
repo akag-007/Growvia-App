@@ -392,7 +392,7 @@ export async function performDailyCheckIn(): Promise<DailyCheckInResult> {
 
   return {
     success: true,
-    xp_awarded,
+    xp_awarded: xpAwarded,
     already_checked_in: false,
   }
 }
