@@ -278,6 +278,7 @@ async function getLevelInfo(totalXP: number): Promise<LevelInfo> {
       xp_threshold: 0,
       bonus_xp: 0,
       required_league: null,
+      created_at: new Date(),
       xp_to_next: 25,
       xp_progress: 0,
     }
