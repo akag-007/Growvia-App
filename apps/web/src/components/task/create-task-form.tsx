@@ -5,6 +5,7 @@ import { createTask } from '@/actions/task'
 import { createCategorySchema, PRIORITY_META, PriorityValue, PRIORITY_VALUES } from '@app/shared'
 import { X, Plus } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { format } from 'date-fns'
 
 const COLOR_SWATCHES = [
     '#6366f1', '#4ade80', '#10b981', '#a855f7', '#ec4899',
@@ -21,9 +22,11 @@ const PRIORITY_ICONS: Record<PriorityValue, string> = {
 export function CreateTaskForm({
     onClose,
     categories,
+    selectedDate,
 }: {
     onClose: () => void,
-    categories: any[]
+    categories: any[],
+    selectedDate?: Date
 }) {
     const [formData, setFormData] = useState({
         title: '',
@@ -55,6 +58,9 @@ export function CreateTaskForm({
         submitData.append('estimated_duration', totalMinutes.toString())
         if (formData.priority) {
             submitData.append('priority', formData.priority)
+        }
+        if (selectedDate) {
+            submitData.append('due_date', format(selectedDate, 'yyyy-MM-dd'))
         }
 
         if (isNewCategory) {

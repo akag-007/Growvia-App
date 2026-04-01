@@ -179,6 +179,7 @@ export default function ClientDashboard({ initialTasks, categories, user }: { in
                     <CreateTaskForm
                         onClose={() => setIsCreateOpen(false)}
                         categories={categories}
+                        selectedDate={selectedDate}
                     />
                 )}
             </AnimatePresence>
