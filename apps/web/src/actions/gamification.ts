@@ -251,8 +251,8 @@ async function awardLevelBonusXP(
   await supabase
     .from('user_profiles')
     .update({
-      total_xp: (await supabase.from('user_profiles').select('total_xp').eq('user_id', userId).single())
-        .data?.total_xp || 0 + levelData.bonus_xp,
+      total_xp: ((await supabase.from('user_profiles').select('total_xp').eq('user_id', userId).single())
+        .data?.total_xp || 0) + levelData.bonus_xp,
     })
     .eq('user_id', userId)
 }
@@ -364,7 +364,10 @@ export async function performDailyCheckIn(): Promise<DailyCheckInResult> {
     const lastCheckInDate = new Date(profile.last_check_in)
     lastCheckInDate.setHours(0, 0, 0, 0)
 
-    if (lastCheckInDate.getTime() === today.getTime()) {
+    const todayISO = today.toISOString().split('T')[0]
+    const lastCheckInISO = lastCheckInDate.toISOString().split('T')[0]
+
+    if (lastCheckInISO === todayISO) {
       return { success: false, xp_awarded: 0, already_checked_in: true }
     }
   }
@@ -418,11 +421,12 @@ export async function canCheckInToday(): Promise<boolean> {
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
+  const todayISO = today.toISOString().split('T')[0]
 
   const lastCheckInDate = new Date(profile.last_check_in)
-  lastCheckInDate.setHours(0, 0, 0, 0)
+  const lastCheckInISO = lastCheckInDate.toISOString().split('T')[0]
 
-  return lastCheckInDate.getTime() !== today.getTime()
+  return lastCheckInISO !== todayISO
 }
 
 // ==========================================
@@ -486,6 +490,14 @@ export async function getLeaderboard(
     .slice(0, limit)
     .map((score, index) => {
       const profile = profileMap.get(score.user_id)
+      let movement: 'up' | 'down' | 'same' = 'same'
+      if (score.previous_rank) {
+        if (index + 1 < score.previous_rank) {
+          movement = 'up'
+        } else if (index + 1 > score.previous_rank) {
+          movement = 'down'
+        }
+      }
       return {
         rank: index + 1,
         user_id: score.user_id,
@@ -495,9 +507,7 @@ export async function getLeaderboard(
         league_id: score.league_id,
         current_level: profile?.current_level || 1,
         current_streak: profile?.current_streak || 0,
-        movement: score.previous_rank
-          ? (index + 1 < score.previous_rank ? 'up' : index + 1 > score.previous_rank ? 'down' : 'same')
-          : 'same',
+        movement,
         movement_amount: score.previous_rank ? Math.abs((index + 1) - score.previous_rank) : 0,
         is_current_user: score.user_id === user.id,
       }
@@ -662,13 +672,14 @@ async function updateDailyScore(
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
+  const todayDate = today.toISOString().split('T')[0] // Format as YYYY-MM-DD for DATE column
 
   // Check if daily score exists for today
   const { data: existingScore } = await supabase
     .from('daily_scores')
     .select('*')
     .eq('user_id', userId)
-    .eq('date', today.toISOString())
+    .eq('date', todayDate)
     .single()
 
   if (existingScore) {
@@ -682,14 +693,14 @@ async function updateDailyScore(
         xp_earned: existingScore.xp_earned + xpEarned,
       })
       .eq('user_id', userId)
-      .eq('date', today.toISOString())
+      .eq('date', todayDate)
   } else {
     // Create new daily score
     await supabase
       .from('daily_scores')
       .insert({
         user_id: userId,
-        date: today.toISOString(),
+        date: todayDate,
         score: xpEarned,
         tasks_completed: tasksCompleted,
         hours_logged: hoursLogged,
@@ -708,16 +719,20 @@ export async function getWeeklyXPData(): Promise<Array<{ date: Date; xp: number 
   if (!user) return []
 
   const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const todayDate = today.toISOString().split('T')[0] // Format as YYYY-MM-DD
+
   const weekStart = new Date(today)
   weekStart.setDate(today.getDate() - today.getDay()) // Start of week (Sunday)
   weekStart.setHours(0, 0, 0, 0)
+  const weekStartDate = weekStart.toISOString().split('T')[0] // Format as YYYY-MM-DD
 
   const { data: dailyScores } = await supabase
     .from('daily_scores')
     .select('date, xp_earned')
     .eq('user_id', user.id)
-    .gte('date', weekStart.toISOString())
-    .lte('date', today.toISOString())
+    .gte('date', weekStartDate)
+    .lte('date', todayDate)
     .order('date', { ascending: true })
 
   return dailyScores?.map(score => ({
@@ -803,7 +818,7 @@ export async function useStreakFreeze(): Promise<StreakFreezeResult> {
 /**
  * Get user's weekly statistics
  */
-export async function getUserWeeklyStats() {
+export async function getUserWeeklyStats(): Promise<{ weeklyScore: WeeklyScore | null; activeDays: number } | null> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -825,12 +840,13 @@ export async function getUserWeeklyStats() {
   const weekStart = new Date()
   weekStart.setDate(weekStart.getDate() - weekStart.getDay())
   weekStart.setHours(0, 0, 0, 0)
+  const weekStartDate = weekStart.toISOString().split('T')[0] // Format as YYYY-MM-DD
 
   const { data: dailyScores } = await supabase
     .from('daily_scores')
     .select('date, score')
     .eq('user_id', user.id)
-    .gte('date', weekStart.toISOString())
+    .gte('date', weekStartDate)
 
   const activeDays = dailyScores?.filter(d => d.score > 0).length || 0
 
@@ -843,7 +859,7 @@ export async function getUserWeeklyStats() {
 /**
  * Get user's gamification settings
  */
-export async function getGamificationSettings() {
+export async function getGamificationSettings(): Promise<any | null> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -861,7 +877,7 @@ export async function getGamificationSettings() {
 /**
  * Update gamification settings
  */
-export async function updateGamificationSettings(settings: Record<string, any>) {
+export async function updateGamificationSettings(settings: Record<string, any>): Promise<{ success: boolean; message?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
