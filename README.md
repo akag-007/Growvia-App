@@ -11,76 +11,121 @@ Unlike traditional to-do apps, Growvia focuses on **time, discipline, and measur
 ## ✨ Features
 
 ### 🔹 1. Authentication & System
-- Secure Email & Password authentication (Supabase Auth).
-- Cross-device sync & offline support with conflict-safe merging.
-- Optional Google Calendar sync.
-- Data ownership: Full CSV/Excel export and full data wipe on account deletion.
+- **Secure Auth**: Email & Password authentication via Supabase Auth.
+- **Real-time Sync**: Cross-device sync & offline-first architecture with conflict-safe merging.
+- **Data Privacy**: Full CSV/Excel export and complete data wipe capabilities.
 
 ### 🔹 2. Gamified Daily Tasks
-- **Task Management**: Create tasks with title, description, category, planned duration, due date, and urgency.
+- **Task Management**: Create tasks with categories, planned durations, and priority levels.
 - **Eisenhower Matrix**: Organize tasks visually by urgency and importance.
-- **Timer Engine**: Built-in task timer for tracking real effort with append-only logs for partial or multiple sessions.
-- **Gamification**: Earn a **Daily Score**, maintain **Streaks**, and track **Weekly Momentum**.
+- **Timer Engine**: Built-in task timer for tracking real effort with append-only logs for session history.
+- **Progress Tracking**: Daily scores, streaks, and weekly momentum visualization.
 
 ### 🔹 3. Long-Term Projects
-- Link daily tasks to multi-day goals supporting many-to-many relationships.
-- Circular progress visualization based on aggregated real-time progression from linked tasks.
+- **Goal Linking**: Link daily tasks to multi-day projects (many-to-many relationships).
+- **Aggregate Progress**: Circular progress visualization based on real-time effort invested in linked tasks.
 
 ### 🔹 4. Spaced Repetition (Revisits)
-- Add tasks or topics to revisit at scheduled custom intervals.
-- Track completion counts and full revisit history.
+- **Review Schedules**: Add tasks or topics to revisit at custom intervals.
+- **History Tracking**: Full history of completions and review counts.
 
 ### 🔹 5. Custom Habit Challenges
-- Grid-based tracking UI for custom challenges (e.g., 75 Hard, 100 Days of Code).
-- Daily, weekly, or hourly check-ins.
+- **Visual Tracking**: Grid-based UI (contribution-style) for challenges like "75 Hard" or "100 Days of Code".
+- **Flexible Check-ins**: Daily, weekly, or hourly tracking.
 
-### 🔹 6. Notes & Organization
-- Lightweight note-taking to complement your tasks.
-- Dedicated **Return Stack** for due and upcoming items.
-- Calendar system for time-based visualization of work.
+### 🔹 6. Advanced Organization
+- **Lightweight Notes**: A scratchpad system to complement your tasks.
+- **Calendar View**: Time-based visualization and drag-and-drop planning.
+- **Return Stack**: Dedicated view for due and upcoming priority items.
+
+---
+
+## 🎮 Gamification Engine
+
+The core of Growvia is its deep gamification system, designed to reward consistency and deep work.
+
+- **XP System**: Earn XP for task completion (duration + priority), revisits, and long-term project milestones.
+- **15-Tier Leveling**: Progress from "Amateur I" to "Transcendent" with unlockable titles and bonuses.
+- **Weekly Leagues**: Compete in 5 league tiers (Bronze → Diamond) with weekly promotion/relegation based on consistency-weighted performance.
+- **Streak System**: Maintain daily streaks with a threshold-based score system. Includes "Streak Freeze" protection.
+- **Achievement Badges**: 16+ pre-configured badges across 5 categories (Streak, Tasks, XP, Time, Special).
+- **Cinematic Experience**: Animated "Weekly Reset" screens with confetti, rank change reveals, and detailed performance summaries.
 
 ---
 
 ## 🎨 UI/UX System
 
-- **Spatial UI design** with glassmorphism and liquid glass effects.
-- Scenic blurred backgrounds and floating components.
-- Smooth animations powered by GSAP & Framer Motion.
+- **Spatial Design**: Modern glassmorphism and liquid glass effects.
+- **Premium Aesthetics**: Scenic blurred backgrounds, smooth transitions, and floating components.
+- **Dynamic Interactions**: Micro-animations powered by **Framer Motion 12** and **GSAP**.
+- **Responsive Layout**: Seamlessly adapted for deep work on web and quick tracking on mobile.
 
 ---
 
 ## 🧩 Tech Stack
 
-- **Frontend (Web):** Next.js + React + TypeScript
-- **Mobile:** React Native
-- **Backend:** Supabase (PostgreSQL, Auth, Realtime)
-- **State Management:** Zustand + TanStack Query
-- **Styling & UI:** Tailwind CSS, shadcn/ui
+Growvia utilizes a modern, production-grade stack for performance and scalability:
+
+- **Frontend (Web):** [Next.js 15](https://nextjs.org/) (App Router) + [React 19](https://react.dev/)
+- **Styling:** [Tailwind CSS 4](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
+- **Backend:** [Supabase](https://supabase.com/) (PostgreSQL, Auth, Realtime)
+- **State Management:** [Zustand](https://github.com/pmndrs/zustand) + [TanStack Query](https://tanstack.com/query/latest)
+- **Animations:** Framer Motion 12, GSAP, and `@number-flow/react`
 
 ---
 
-## 🚀 Future Roadmap
+## 🛠️ Project Structure
 
-- **Social & Community**: Public leaderboards, profiles, and community challenges.
-- **XP System**: Earn XP points based on task difficulty, duration, and priority. Competitive ranking system.
+This project is a **monorepo** managed by [Turborepo](https://turbo.build/):
+
+```
+├── apps/
+│   ├── web/        # Next.js web application (Primary Client)
+│   └── mobile/     # React Native app (Coming Soon)
+├── packages/
+│   └── shared/     # Shared logic, schemas, and types
+├── databases/      # SQL migrations and schema definitions
+└── explain/        # Detailed documentation for system architecture
+```
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js (Latest LTS)
+- npm or pnpm
+- A Supabase project
+
+### Installation
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-username/growvia.git
+   cd growvia
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Set up environment variables:
+   Create a `.env.local` in `apps/web` with your Supabase credentials.
+4. Run the development server:
+   ```bash
+   npm run dev
+   ```
 
 ---
 
 ## 🧠 Philosophy
 
-Growvia is built on one core idea:
-
 > “Track the work. See your growth.”
 
-It’s more than a task manager—it’s a system for building discipline, consistency, and measurable progress.
+Growvia is built on the belief that discipline is built through measurable progress. It’s more than a task manager—it’s a system for building consistency and seeing your evolution over time.
 
 ---
 
 ## 📌 Status
-🚧 **In active development** - Building toward a production-grade SaaS.
-
-## 🤝 Contributing
-Currently private and in early-stage development. Will be open for contributions in future phases.
+🚧 **In active development** - Production-ready gamification engine and core productivity modules.
 
 ## 📄 License
 To be decided.
