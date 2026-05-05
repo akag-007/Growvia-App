@@ -76,6 +76,7 @@ export const LEAGUE_CONFIG = {
     rank_max: 100,
     color: '#cd7f32',
     icon: '🥉',
+    created_at: new Date(),
   },
   silver: {
     id: 'silver' as const,
@@ -90,6 +91,7 @@ export const LEAGUE_CONFIG = {
     rank_max: 200,
     color: '#c0c0c0',
     icon: '🥈',
+    created_at: new Date(),
   },
   gold: {
     id: 'gold' as const,
@@ -104,6 +106,7 @@ export const LEAGUE_CONFIG = {
     rank_max: 300,
     color: '#ffd700',
     icon: '🥇',
+    created_at: new Date(),
   },
   platinum: {
     id: 'platinum' as const,
@@ -118,6 +121,7 @@ export const LEAGUE_CONFIG = {
     rank_max: 400,
     color: '#e5e4e2',
     icon: '💎',
+    created_at: new Date(),
   },
   diamond: {
     id: 'diamond' as const,
@@ -132,6 +136,7 @@ export const LEAGUE_CONFIG = {
     rank_max: 500,
     color: '#b9f2ff',
     icon: '👑',
+    created_at: new Date(),
   },
 } as const;
 

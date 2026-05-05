@@ -359,7 +359,7 @@ export function isEpicOrHigher(badge: Badge): boolean {
  * Get badge display size based on rarity
  */
 export function getBadgeDisplaySize(rarity: BadgeRarity): 'sm' | 'md' | 'lg' | 'xl' {
-  const sizes = {
+  const sizes: Record<BadgeRarity, 'sm' | 'md' | 'lg' | 'xl'> = {
     common: 'sm',
     rare: 'md',
     epic: 'lg',

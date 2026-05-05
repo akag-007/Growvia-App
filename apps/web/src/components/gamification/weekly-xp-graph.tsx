@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { TrendingUp, TrendingDown, Minus, Flame } from 'lucide-react'
 import { getWeeklyXPData } from '@/actions/gamification'
 import type { WeeklyXPData } from '@/types/gamification'

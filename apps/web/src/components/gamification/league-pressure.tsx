@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AlertTriangle, ChevronUp, ChevronDown, Shield, Bell, X } from 'lucide-react'
 import { useLeagueNotifications } from '@/hooks/gamification/use-league'
@@ -72,8 +73,8 @@ export function LeaguePressure({
     )
   }
 
-  const isInDanger = leaguePressure.in_relegation_zone || leaguePressure.to_relegation <= 20
-  const isCloseToPromotion = leaguePressure.in_promotion_zone || leaguePressure.to_promotion <= 20
+  const isInDanger = leaguePressure?.in_relegation_zone || leaguePressure?.to_relegation <= 20 || false
+  const isCloseToPromotion = leaguePressure?.in_promotion_zone || leaguePressure?.to_promotion <= 20 || false
 
   return (
     <div className={`space-y-3 ${className}`}>
@@ -116,8 +117,8 @@ export function LeaguePressure({
                   isInDanger ? 'text-red-200' : 'text-yellow-200'
                 }`}>
                   {isInDanger
-                    ? `You're ${leaguePressure.to_relegation} XP from relegation zone! Earn more XP to stay safe.`
-                    : `You're only ${leaguePressure.to_promotion} XP away from promotion! Keep pushing!`
+                    ? `You're ${leaguePressure?.to_relegation} XP from relegation zone! Earn more XP to stay safe.`
+                    : `You're only ${leaguePressure?.to_promotion} XP away from promotion! Keep pushing!`
                   }
                 </p>
               </div>
@@ -152,7 +153,7 @@ export function LeaguePressure({
             </div>
             <div>
               <div className="text-2xl font-bold text-white">
-                {leaguePressure.to_promotion} XP
+                {leaguePressure?.to_promotion} XP
               </div>
               <p className="text-xs text-slate-400 mt-1">
                 {isCloseToPromotion ? 'So close!' : 'Keep working!'}
@@ -194,7 +195,7 @@ export function LeaguePressure({
             </div>
             <div>
               <div className="text-2xl font-bold text-white">
-                {leaguePressure.to_relegation} XP
+                {leaguePressure?.to_relegation} XP
               </div>
               <p className={`text-xs mt-1 ${
                 isInDanger ? 'text-red-300' : 'text-slate-400'
@@ -232,15 +233,15 @@ export function LeaguePressure({
           }`}
         >
           <div className={`text-lg font-semibold ${
-            leaguePressure.safe_zone
+            leaguePressure?.safe_zone
               ? 'text-blue-300'
-              : leaguePressure.in_promotion_zone
+              : leaguePressure?.in_promotion_zone
               ? 'text-green-300'
               : 'text-slate-300'
           }`}>
-            {leaguePressure.safe_zone && "✅ You're in a safe zone. Good work!"}
-            {leaguePressure.in_promotion_zone && "🎉 You're in the promotion zone!"}
-            {!leaguePressure.safe_zone && !leaguePressure.in_promotion_zone && "⚡ Keep pushing for that promotion!"}
+            {leaguePressure?.safe_zone && "✅ You're in a safe zone. Good work!"}
+            {leaguePressure?.in_promotion_zone && "🎉 You're in the promotion zone!"}
+            {!leaguePressure?.safe_zone && !leaguePressure?.in_promotion_zone && "⚡ Keep pushing for that promotion!"}
           </div>
         </motion.div>
       )}
@@ -267,7 +268,7 @@ export function LeaguePressure({
             <span className={`font-bold ${
               isCloseToPromotion ? 'text-green-400' : 'text-slate-400'
             }`}>
-              {leaguePressure.to_promotion} XP
+              {leaguePressure?.to_promotion} XP
             </span>
           </motion.div>
 
@@ -290,7 +291,7 @@ export function LeaguePressure({
             <span className={`font-bold ${
               isInDanger ? 'text-red-400' : 'text-slate-400'
             }`}>
-              {leaguePressure.to_relegation} XP
+              {leaguePressure?.to_relegation} XP
             </span>
           </motion.div>
         </div>
@@ -344,7 +345,7 @@ export function LeaguePressureAlert({
         <div className="flex-1">
           <h3 className="font-bold mb-1">⚠️ Relegation Warning</h3>
           <p className="text-sm text-red-100">
-            You're {leaguePressure.to_relegation} XP from the relegation zone!
+            You're {leaguePressure?.to_relegation} XP from the relegation zone!
             Complete more tasks to stay safe.
           </p>
           <button
@@ -382,13 +383,13 @@ export function MinimalLeaguePressure({
       {isCloseToPromotion && (
         <div className="flex items-center gap-1 text-green-400 text-sm">
           <ChevronUp className="w-3 h-3" />
-          <span>+{leaguePressure.to_promotion} XP</span>
+          <span>+{leaguePressure?.to_promotion} XP</span>
         </div>
       )}
       {isInDanger && (
         <div className="flex items-center gap-1 text-red-400 text-sm">
           <AlertTriangle className="w-3 h-3" />
-          <span>-{leaguePressure.to_relegation} XP</span>
+          <span>-{leaguePressure?.to_relegation} XP</span>
         </div>
       )}
       {!isCloseToPromotion && !isInDanger && (

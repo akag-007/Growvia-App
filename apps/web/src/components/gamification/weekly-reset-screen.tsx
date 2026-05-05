@@ -343,7 +343,7 @@ export function WeeklyResetScreen({
                         className="bg-white/10 backdrop-blur rounded-xl p-4 text-center"
                       >
                         <div className={`mb-2 ${stat.color}`}>
-                          <stat.icon className="w-8 h-8 mx-auto" />
+                          {stat.icon}
                         </div>
                         <div className="text-3xl font-bold text-white mb-1">{stat.value}</div>
                         <div className="text-white/70 text-sm">{stat.label}</div>
