@@ -342,7 +342,7 @@ export async function performDailyCheckIn(): Promise<DailyCheckInResult> {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
-    return { success: false, xp_awarded: 0, already_checked_in: false }
+    return { success: false, xp_awarded: 0, already_checked_in: false, message: 'Unauthorized' }
   }
 
   const today = new Date()
@@ -356,7 +356,7 @@ export async function performDailyCheckIn(): Promise<DailyCheckInResult> {
     .single()
 
   if (!profile) {
-    return { success: false, xp_awarded: 0, already_checked_in: false }
+    return { success: false, xp_awarded: 0, already_checked_in: false, message: 'Profile not found' }
   }
 
   // Check if already checked in today
@@ -368,7 +368,7 @@ export async function performDailyCheckIn(): Promise<DailyCheckInResult> {
     const lastCheckInISO = lastCheckInDate.toISOString().split('T')[0]
 
     if (lastCheckInISO === todayISO) {
-      return { success: false, xp_awarded: 0, already_checked_in: true }
+      return { success: false, xp_awarded: 0, already_checked_in: true, message: 'Already checked in today' }
     }
   }
 
@@ -377,7 +377,7 @@ export async function performDailyCheckIn(): Promise<DailyCheckInResult> {
   const awardResult = await awardXP(xpAwarded, 'daily_check_in')
 
   if (!awardResult.success) {
-    return { success: false, xp_awarded: 0, already_checked_in: false }
+    return { success: false, xp_awarded: 0, already_checked_in: false, message: awardResult.message || 'Failed to award XP' }
   }
 
   // Update last check-in
@@ -397,6 +397,7 @@ export async function performDailyCheckIn(): Promise<DailyCheckInResult> {
     success: true,
     xp_awarded: xpAwarded,
     already_checked_in: false,
+    message: 'Check-in successful!',
   }
 }
 
@@ -437,7 +438,7 @@ export async function canCheckInToday(): Promise<boolean> {
  * Get leaderboard data
  */
 export async function getLeaderboard(
-  type: 'global' | 'league' = 'global',
+  type: 'global' | 'friends' | 'league' = 'global',
   limit: number = 20
 ): Promise<LeaderboardData | null> {
   const supabase = await createClient()
@@ -712,7 +713,7 @@ async function updateDailyScore(
 /**
  * Get weekly XP data for graph
  */
-export async function getWeeklyXPData(): Promise<Array<{ date: Date; xp: number }>> {
+export async function getWeeklyXPData(): Promise<Array<{ date: Date; xp: number; tasks: number; hours: number; day_of_week: number; day_name: string }>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -729,16 +730,25 @@ export async function getWeeklyXPData(): Promise<Array<{ date: Date; xp: number 
 
   const { data: dailyScores } = await supabase
     .from('daily_scores')
-    .select('date, xp_earned')
+    .select('date, xp_earned, tasks_completed, hours_logged')
     .eq('user_id', user.id)
     .gte('date', weekStartDate)
     .lte('date', todayDate)
     .order('date', { ascending: true })
 
-  return dailyScores?.map(score => ({
-    date: new Date(score.date),
-    xp: score.xp_earned,
-  })) || []
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+  return dailyScores?.map(score => {
+    const date = new Date(score.date)
+    return {
+      date,
+      xp: score.xp_earned,
+      tasks: score.tasks_completed || 0,
+      hours: score.hours_logged || 0,
+      day_of_week: date.getDay(),
+      day_name: dayNames[date.getDay()],
+    }
+  }) || []
 }
 
 // ==========================================

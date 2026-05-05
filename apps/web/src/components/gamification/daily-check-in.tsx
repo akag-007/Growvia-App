@@ -11,9 +11,10 @@ interface DailyCheckInProps {
   onCheckInComplete?: (xpAwarded: number) => void
   disabled?: boolean
   className?: string
+  children?: React.ReactNode
 }
 
-export function DailyCheckIn({ onCheckInComplete, disabled = false, className = '' }: DailyCheckInProps) {
+export function DailyCheckIn({ onCheckInComplete, disabled = false, className = '', children }: DailyCheckInProps) {
   const [showAnimation, setShowAnimation] = useState(false)
   const [particlePositions, setParticlePositions] = useState<Array<{ id: number; x: number; y: number }>>([])
   const [canCheckIn, setCanCheckIn] = useState(true)
@@ -116,45 +117,49 @@ export function DailyCheckIn({ onCheckInComplete, disabled = false, className = 
 
         {/* Content */}
         <div className="relative z-10 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <motion.div
-              animate={canCheckIn ? { rotate: [0, 360] } : { rotate: 0 }}
-              transition={{
-                duration: 2,
-                repeat: canCheckIn ? Infinity : 0,
-                ease: "linear"
-              }}
-            >
-              <Calendar className="w-5 h-5" />
-            </motion.div>
-            <div className="text-left">
-              <div className="text-sm font-medium">Daily Check-in</div>
-              <div className="text-xs opacity-80">
-                {canCheckIn ? '+5 XP' : 'Already checked in'}
+          {children ? children : (
+            <>
+              <div className="flex items-center gap-2">
+                <motion.div
+                  animate={canCheckIn ? { rotate: [0, 360] } : { rotate: 0 }}
+                  transition={{
+                    duration: 2,
+                    repeat: canCheckIn ? Infinity : 0,
+                    ease: "linear"
+                  }}
+                >
+                  <Calendar className="w-5 h-5" />
+                </motion.div>
+                <div className="text-left">
+                  <div className="text-sm font-medium">Daily Check-in</div>
+                  <div className="text-xs opacity-80">
+                    {canCheckIn ? '+5 XP' : 'Already checked in'}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          {!canCheckIn && lastCheckInDate && (
-            <div className="text-right text-xs opacity-80">
-              Last: {lastCheckInDate.toLocaleDateString()}
-            </div>
-          )}
+              {!canCheckIn && lastCheckInDate && (
+                <div className="text-right text-xs opacity-80">
+                  Last: {lastCheckInDate.toLocaleDateString()}
+                </div>
+              )}
 
-          {isChecking && (
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              className="w-5 h-5"
-            >
-              <Sparkles className="w-full h-full" />
-            </motion.div>
+              {isChecking && (
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="w-5 h-5"
+                >
+                  <Sparkles className="w-full h-full" />
+                </motion.div>
+              )}
+            </>
           )}
         </div>
 
         {/* XP Gain Animation */}
         <AnimatePresence>
-          {showAnimation && (
+          {!children && showAnimation && (
             <motion.div
               initial={{ opacity: 0, scale: 0 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -197,7 +202,7 @@ export function DailyCheckIn({ onCheckInComplete, disabled = false, className = 
         </AnimatePresence>
 
         {/* Glow effect for available check-in */}
-        {canCheckIn && !showAnimation && (
+        {!children && canCheckIn && !showAnimation && (
           <motion.div
             initial={{ opacity: 0.5 }}
             animate={{ opacity: [0.5, 0.8, 0.5] }}
@@ -208,7 +213,7 @@ export function DailyCheckIn({ onCheckInComplete, disabled = false, className = 
       </motion.button>
 
       {/* Countdown timer hint */}
-      {!canCheckIn && lastCheckInDate && (
+      {!children && !canCheckIn && lastCheckInDate && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}

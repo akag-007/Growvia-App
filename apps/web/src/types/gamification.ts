@@ -323,6 +323,7 @@ export interface DailyCheckInResult {
   already_checked_in: boolean;
   new_streak?: number;
   badges_unlocked?: Badge[];
+  message?: string;
 }
 
 /**
