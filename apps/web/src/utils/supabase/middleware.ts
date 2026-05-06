@@ -31,7 +31,12 @@ export async function updateSession(request: NextRequest) {
         }
     )
 
-    await supabase.auth.getUser()
+    // Use getSession() instead of getUser() in middleware.
+    // getUser() makes a network call to Supabase on every request which
+    // causes MIDDLEWARE_INVOCATION_TIMEOUT on Vercel Edge runtime.
+    // getSession() reads from the cookie locally and is nearly instant.
+    // Full server-side validation via getUser() still happens in Server Actions/Components.
+    await supabase.auth.getSession()
 
     return response
 }
