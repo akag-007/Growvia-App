@@ -425,14 +425,14 @@ export function useLeagueHistory() {
       return 'bronze' as const
     }
 
-    const leagueOrder = ['bronze', 'silver', 'gold', 'platinum', 'diamond'] as const
+    const leagueOrder: LeagueId[] = ['bronze', 'silver', 'gold', 'platinum', 'diamond']
 
-    return history.reduce((best, h) => {
+    return history.reduce<LeagueId>((best, h) => {
       const bestIndex = leagueOrder.indexOf(best)
       const currentLeagueIndex = leagueOrder.indexOf(h.league)
 
       return currentLeagueIndex > bestIndex ? h.league : best
-    }, 'bronze' as const)
+    }, 'bronze')
   }, [history])
 
   return {
